@@ -1,9 +1,8 @@
-// ======================== app.js — 主线程核心逻辑 v3.4 ========================
-// 设计目标：APK WebView 100% 兼容 · Worker 全量卸载 · 离线缓存 · 无 inline JS
+// ======================== app.js — 主线程核心逻辑 v3.4.1 ========================
+// 修复：开奖检测到7个号码后自动停止刷新
 (function () {
   "use strict";
 
-  // ======================== 配置与数据引用 ========================
   const DATA = window.APP_DATA || {};
   const MAX_NUMBERS = DATA.MAX_NUMBERS || 5000;
   const SHENGXIAO = DATA.SHENGXIAO || {};
@@ -19,7 +18,6 @@
   const LS_KEY = 'shenma_v4_state';
   const LS_CACHE_KEY = 'shenma_v4_lottery_cache';
 
-  // ======================== DOM 元素缓存 ========================
   const DOM = {};
   function cacheDOM() {
     const ids = ['numbers','result','charCount','numberWarn','exampleBtn','clearBtn','copyResultBtn',
@@ -35,7 +33,6 @@
     DOM.drawer_close = document.getElementById('drawer-close');
   }
 
-  // ======================== 状态管理 ========================
   let state = {
     killNums: [],
     selectedFilters: {
@@ -65,7 +62,6 @@
     return Object.values(state.selectedFilters).flat();
   }
 
-  // ======================== localStorage 持久化 ========================
   function saveState() {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({
@@ -88,7 +84,6 @@
     } catch (e) {}
   }
 
-  // ======================== 通用工具函数 ========================
   function escapeHtml(str) {
     if (!str) return '';
     return String(str)
@@ -106,7 +101,6 @@
     setTimeout(function () { t.classList.add('translate-y-20', 'opacity-0'); }, 2000);
   }
 
-  // ======================== 输入解析引擎（安全版）========================
   function parseInputCount(input) {
     if (!input || !input.trim()) return { nums: [], truncated: false };
     let cleaned = input.replace(/《.*?》/g, ' ').replace(/[^0-9鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, ' ')
@@ -130,7 +124,6 @@
     return { nums: results, truncated: truncated };
   }
 
-  // ======================== 筛选缓存签名（防状态不一致）========================
   let cachedMatchFuncs = null;
   let lastFilterSignature = '';
   function getMatchFuncs() {
@@ -181,12 +174,10 @@
     return function () { return false; };
   }
 
-  // ======================== Worker 管理（独立文件 · 非 Blob）========================
   let analysisWorker = null;
   function initWorker() {
     if (analysisWorker) return;
     try {
-      // APK WebView 兼容：使用同目录下的独立 worker.js 文件
       analysisWorker = new Worker('worker.js');
       analysisWorker.onmessage = onWorkerMessage;
       analysisWorker.onerror = function (e) {
@@ -204,7 +195,6 @@
     }
   }
 
-  // Worker 回传结果处理
   function onWorkerMessage(e) {
     try {
       const d = e.data;
@@ -214,7 +204,6 @@
     }
   }
 
-  // ======================== 独苗飞行特效 ========================
   let currentUniqueElement = null;
   let lastUniqueNum = null;
 
@@ -289,19 +278,16 @@
     requestAnimationFrame(animate);
   }
 
-  // ======================== 分析结果渲染（DocumentFragment 优化版）========================
   function renderResult(adjustedCount, adjustedTotal, unique, hitCounts) {
     try {
       const container = DOM.result;
       if (!container) return;
 
-      // 清除旧独苗高亮
       if (currentUniqueElement) {
         currentUniqueElement.classList.remove('flash-unique');
         currentUniqueElement = null;
       }
 
-      // 按频次分组
       const freqMap = new Map();
       for (let n = 1; n <= 49; n++) {
         const f = adjustedCount[n];
@@ -315,7 +301,6 @@
       let killDrawn = false;
       const avg = unique ? (adjustedTotal / unique).toFixed(2) : '0.00';
 
-      // 计算独苗
       const unhitNumbers = [];
       for (let n = 1; n <= 49; n++) {
         if (adjustedCount[n] > 0 && hitCounts[n] === 0) unhitNumbers.push(n);
@@ -324,10 +309,8 @@
       const uniqueUnhitNum = isUniqueUnhit ? unhitNumbers[0] : null;
       const killSet = new Set(state.killNums);
 
-      // 缓存排序 Map 供复制
       const sortedFreqMap = new Map();
 
-      // 构建 HTML 字符串（分组结构复杂，字符串构建最清晰）
       const htmlParts = [];
       for (let fi = 0; fi < freqs.length; fi++) {
         const f = freqs[fi];
@@ -360,10 +343,8 @@
         htmlParts.push('<div class="text-center py-8 text-amber-400">\u26A1 所有号码频次归零，请调整筛选条件 \u26A1</div>');
       }
 
-      // 底部统计面板
       htmlParts.push('<div class="mt-4 grid grid-cols-3 gap-2 p-3 bg-[#1a1a2a] rounded-lg border border-[#00ffea]/20"><div class="text-center"><div class="text-[#00ffea] font-bold text-lg">' + unique + '</div><div class="text-xs text-gray-500">有效数字个数</div></div><div class="text-center"><div class="text-[#00ffea] font-bold text-lg">' + adjustedTotal + '</div><div class="text-xs text-gray-500">调整后总次数</div></div><div class="text-center"><div class="text-[#00ffea] font-bold text-lg">' + avg + '</div><div class="text-xs text-gray-500">调整后平均次数</div></div></div>');
 
-      // 使用 DocumentFragment 批量插入，减少重排
       const frag = document.createDocumentFragment();
       const wrapper = document.createElement('div');
       wrapper.innerHTML = htmlParts.join('');
@@ -373,7 +354,6 @@
       container.innerHTML = '';
       container.appendChild(frag);
 
-      // 触发独苗飞入
       if (uniqueUnhitNum) {
         currentUniqueElement = DOM.result.querySelector('[data-num="' + uniqueUnhitNum + '"]');
         if (lastUniqueNum !== uniqueUnhitNum) {
@@ -393,7 +373,6 @@
     }
   }
 
-  // ======================== 事件代理：结果区号码点击复制 ========================
   function initResultDelegation() {
     const resultEl = DOM.result;
     if (!resultEl) return;
@@ -405,7 +384,6 @@
     });
   }
 
-  // ======================== 防抖分析调度 ========================
   let debounceTimer = null;
   function runAnalysis() {
     initWorker();
@@ -440,12 +418,22 @@
     }, 200);
   }
 
-  // 状态变更回调
   function onStateChange() {
     runAnalysis();
     saveState();
   }
 
+  // ======================== 开奖自动刷新控制 ========================
+  // 当期开奖是否已完成（7个号码全部开出）
+  let isCurrentDrawComplete = false;
+  let lastLotteryPeriod = '';
+
+  // 检查开奖数据是否完整（6正码 + 1特码 = 7个号码）
+  function checkDrawComplete(item) {
+    if (!item || !item.openCode) return false;
+    const codes = String(item.openCode).split(',').filter(function (c) { return c.trim() !== ''; });
+    return codes.length >= 7;
+  }
 
   // ======================== 开奖数据获取（含离线缓存）========================
   async function safeFetch(url, options, retries) {
@@ -475,7 +463,6 @@
     try {
       const res = await safeFetch(API_CONFIG.live + '?_t=' + Date.now());
       const data = await res.json();
-      // 严格校验
       if (!Array.isArray(data) || !data[0]) {
         showToast('暂无开奖数据');
         return;
@@ -488,7 +475,6 @@
         return;
       }
 
-      // 离线缓存：保存到 localStorage
       try {
         localStorage.setItem(LS_CACHE_KEY, JSON.stringify({
           data: data,
@@ -496,12 +482,25 @@
         }));
       } catch (e) {}
 
+      // 如果期号变化了（新一期），重置开奖完成标志
+      if (lastLotteryPeriod !== item.expect) {
+        lastLotteryPeriod = item.expect;
+        isCurrentDrawComplete = false;
+      }
+
       renderLottery(item);
-      showToast('刷新成功');
+
+      // 检测当期是否已开完7个号码
+      if (!isCurrentDrawComplete && checkDrawComplete(item)) {
+        isCurrentDrawComplete = true;
+        showToast('当期开奖已完成，自动刷新停止');
+      } else {
+        showToast('刷新成功');
+      }
+
       if (DOM.lastRefreshTime) DOM.lastRefreshTime.textContent = '上次刷新：' + new Date().toLocaleTimeString();
     } catch (e) {
       console.error('fetchLottery error:', e);
-      // 离线回退：尝试读取缓存
       try {
         const cacheRaw = localStorage.getItem(LS_CACHE_KEY);
         if (cacheRaw) {
@@ -530,7 +529,6 @@
     container.innerHTML = '';
     const wxClassMap = {'金':'wx-gold','木':'wx-wood','水':'wx-water','火':'wx-fire','土':'wx-earth'};
 
-    // 前6个正码
     for (let i = 0; i < 6 && i < codes.length; i++) {
       const num = parseInt(codes[i], 10);
       const colorClass = waves[i] === 'red' ? 'result-ball-red' : (waves[i] === 'green' ? 'result-ball-green' : 'result-ball-blue');
@@ -541,14 +539,12 @@
       div.innerHTML = '<div class="result-ball ' + colorClass + '" style="animation-delay: ' + (i * 150) + 'ms">' + escapeHtml(codes[i].padStart(2, '0')) + '<div class="result-ball-meta">' + escapeHtml(zodiacs[i] || '') + '/<span class="' + wxCls + '">' + wx + '</span></div></div>';
       container.appendChild(div);
     }
-    // +号分隔
     if (codes.length >= 7) {
       const plus = document.createElement('div');
       plus.className = 'result-plus-sign';
       plus.textContent = '+';
       container.appendChild(plus);
     }
-    // 特码
     if (codes.length >= 7) {
       const num = parseInt(codes[6], 10);
       const colorClass = waves[6] === 'red' ? 'result-ball-red' : (waves[6] === 'green' ? 'result-ball-green' : 'result-ball-blue');
@@ -565,7 +561,6 @@
     if (DOM.lotteryTime) DOM.lotteryTime.textContent = escapeHtml((item.openTime || '--').replace(' ', '\n'));
   }
 
-  // ======================== 历史开奖记录 ========================
   let currentHistoryData = [];
   let currentHistorySorted = [];
   let currentHistoryPage = 1;
@@ -602,7 +597,6 @@
     });
   }
 
-  // 历史记录渲染：使用 DocumentFragment 减少重排
   function renderHistoryPage() {
     try {
       const cont = document.getElementById('historyContent');
@@ -620,7 +614,6 @@
       const start = (currentHistoryPage - 1) * HISTORY_PAGE_SIZE;
       const pageData = sorted.slice(start, start + HISTORY_PAGE_SIZE);
 
-      // 使用 DocumentFragment 批量构建历史记录
       const frag = document.createDocumentFragment();
       for (let i = 0; i < pageData.length; i++) {
         const item = pageData[i];
@@ -669,7 +662,6 @@
     if (currentHistoryPage < totalPages) { currentHistoryPage++; renderHistoryPage(); }
   };
 
-  // ======================== 底部抽屉系统 ========================
   const DrawerSystem = {
     current: null,
     templates: {
@@ -805,7 +797,6 @@
     bindEvents: function (type) {
       const content = DOM.drawer_content;
       if (!content) return;
-      // 筛选器 checkbox
       content.querySelectorAll('.filter-checkbox').forEach(function (cb) {
         cb.addEventListener('change', function (e) {
           const dr = e.target.dataset.drawer;
@@ -813,7 +804,6 @@
           if (dr && state.selectedFilters[dr] !== undefined) toggleFilter(dr, val, e.target.checked);
         });
       });
-      // 杀码输入框
       const killInput = document.getElementById('kill-input');
       if (killInput) {
         killInput.addEventListener('input', function () {
@@ -821,7 +811,6 @@
           setKillNums(parsed.nums.filter(function (n) { return n >= 1 && n <= 49; }));
         });
       }
-      // 直播抽屉
       if (type === 'live') {
         const iframe = document.getElementById('live-iframe');
         const loading = document.getElementById('live-loading');
@@ -848,7 +837,6 @@
           }, 8000);
         }
       }
-      // 历史抽屉
       if (type === 'history') {
         const yearSel = document.getElementById('historyYear');
         if (yearSel && !yearSel._listener) {
@@ -885,7 +873,6 @@
           });
           yearSel._listener = true;
         }
-        // 翻页按钮事件绑定（取代 inline onclick）
         const prevBtn = document.getElementById('history-prev');
         const nextBtn = document.getElementById('history-next');
         if (prevBtn && !prevBtn._listener) {
@@ -919,7 +906,6 @@
     }
   };
 
-  // ======================== 复制功能 ========================
   function copyResult() {
     if (!lastAnalysisResult) { showToast('暂无分析结果'); return; }
     const sortedFreqMap = lastAnalysisResult.sortedFreqMap;
@@ -940,6 +926,8 @@
   // ======================== 自动刷新控制 ========================
   function initAutoRefresh() {
     setInterval(function () {
+      if (isCurrentDrawComplete) return;
+
       const now = new Date();
       const h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
       const totalSec = h * 3600 + m * 60 + s;
@@ -949,7 +937,6 @@
     }, 5000);
   }
 
-  // ======================== 初始化入口 ========================
   function init() {
     cacheDOM();
     loadState();
@@ -957,14 +944,12 @@
     subscribe(onStateChange);
     initResultDelegation();
 
-    // 示例按钮
     if (DOM.exampleBtn) {
       DOM.exampleBtn.addEventListener('click', function () {
         if (DOM.numbers) DOM.numbers.value = '龙蛇马 12 25 36 8 17 29 41 5 19 33 47';
         runAnalysis();
       });
     }
-    // 清除按钮
     if (DOM.clearBtn) {
       DOM.clearBtn.addEventListener('click', function () {
         if (DOM.numbers) DOM.numbers.value = '';
@@ -972,14 +957,10 @@
         showToast('已清空输入');
       });
     }
-    // 复制结果按钮
     if (DOM.copyResultBtn) DOM.copyResultBtn.addEventListener('click', copyResult);
-    // 输入框实时分析
     if (DOM.numbers) DOM.numbers.addEventListener('input', function () { runAnalysis(); });
-    // 手动刷新开奖
     if (DOM.refreshLotteryBtn) DOM.refreshLotteryBtn.addEventListener('click', function () { fetchLottery(); });
 
-    // 底部导航点击
     document.querySelectorAll('.nav-item').forEach(function (btn) {
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
@@ -995,23 +976,19 @@
         }
       });
     });
-    // 抽屉关闭
     if (DOM.drawer_close) DOM.drawer_close.addEventListener('click', function () { DrawerSystem.close(); });
     if (DOM.drawer_overlay) DOM.drawer_overlay.addEventListener('click', function () { DrawerSystem.close(); });
 
-    // 首次加载
     fetchLottery();
     runAnalysis();
 
-    // 启动自动刷新
     initAutoRefresh();
 
-    // 页面卸载前清理 Worker
     window.addEventListener('beforeunload', function () {
       terminateWorker();
     });
 
-    console.log('%c\u2705 神码再现 v3.4 已加载（APK WebView 终极优化版）', 'color:#00ffea;font-weight:bold');
+    console.log('%c\u2705 神码再现 v3.4.1 已加载（开奖完成自动停止刷新版）', 'color:#00ffea;font-weight:bold');
   }
 
   document.addEventListener('DOMContentLoaded', init);
