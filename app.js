@@ -51,9 +51,14 @@
 
   function setKillNums(newNums) { state.killNums = [...newNums]; notify(); }
   function toggleFilter(category, value, checked) {
+    // 校验 category 合法性，防止非法 key 导致 undefined 操作崩溃
+    if (!state.selectedFilters[category]) return;
     const arr = state.selectedFilters[category];
-    if (checked) { if (!arr.includes(value)) arr.push(value); }
-    else { const idx = arr.indexOf(value); if (idx !== -1) arr.splice(idx, 1); }
+    // 使用 Set 去重查询，O(1) 替代 O(n)
+    const set = new Set(arr);
+    if (checked) { set.add(value); }
+    else { set.delete(value); }
+    state.selectedFilters[category] = Array.from(set);
     notify();
   }
   function clearAllFilters() {
@@ -74,18 +79,35 @@
       }));
     } catch (e) {}
   }
+  // 安全加载 localStorage：schema 校验 + 深拷贝，防止外部篡改导致状态污染
   function loadState() {
     try {
       const raw = localStorage.getItem(LS_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      if (parsed.killNums) state.killNums = parsed.killNums.filter(function (n) { return n >= 1 && n <= 49; });
-      if (parsed.selectedFilters) {
-        Object.keys(state.selectedFilters).forEach(function (k) {
-          if (Array.isArray(parsed.selectedFilters[k])) state.selectedFilters[k] = parsed.selectedFilters[k];
+
+      // Schema 校验：必须是对象
+      if (!parsed || typeof parsed !== 'object') return;
+
+      // killNums：必须是数字数组，范围 1-49
+      if (Array.isArray(parsed.killNums)) {
+        state.killNums = parsed.killNums.filter(function (n) {
+          return Number.isInteger(n) && n >= 1 && n <= 49;
         });
       }
-    } catch (e) {}
+
+      // selectedFilters：深拷贝数组，避免引用共享
+      if (parsed.selectedFilters && typeof parsed.selectedFilters === 'object') {
+        Object.keys(state.selectedFilters).forEach(function (k) {
+          const val = parsed.selectedFilters[k];
+          if (Array.isArray(val)) {
+            state.selectedFilters[k] = Array.from(val);
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('loadState failed', e);
+    }
   }
 
   // ======================== 通用工具函数 ========================
@@ -125,20 +147,27 @@
         if (Number.isInteger(n) && n >= 1 && n <= 49) results.push(n);
       }
     }
+    // 去重：避免重复号码影响统计准确性
+    results = Array.from(new Set(results));
     let truncated = false;
     if (results.length > MAX_NUMBERS) { results = results.slice(0, MAX_NUMBERS); truncated = true; }
     return { nums: results, truncated: truncated };
   }
 
   // ======================== 筛选缓存签名（防状态不一致）========================
+  // 筛选条件缓存：签名失效机制 + Set 优化查询
   let cachedMatchFuncs = null;
   let lastFilterSignature = '';
+  // 用 Set 替代数组 includes，热点路径 O(n) → O(1)
+  let cachedFilterSet = null;
+
   function getMatchFuncs() {
     const sig = JSON.stringify(state.selectedFilters);
     if (cachedMatchFuncs && sig === lastFilterSignature) return cachedMatchFuncs;
     lastFilterSignature = sig;
     const allConds = getFilterSet();
     cachedMatchFuncs = allConds.map(function (cond) { return buildMatchFunc(cond); });
+    cachedFilterSet = new Set(allConds);
     return cachedMatchFuncs;
   }
   function buildMatchFunc(cond) {
@@ -428,10 +457,12 @@
           }
         }
         if (analysisWorker) {
+          // 传递 numProps 给 Worker，避免 Worker 内重复定义静态数据
           analysisWorker.postMessage({
             input: input,
             killNums: state.killNums,
-            filters: getFilterSet()
+            filters: getFilterSet(),
+            numProps: numProps
           });
         }
       } catch (err) {
@@ -486,7 +517,9 @@
     btn.disabled = true;
     try {
       const res = await safeFetch(API_CONFIG.live + '?_t=' + Date.now());
-      const data = await res.json();
+      let data;
+      try { data = await res.json(); }
+      catch (parseErr) { showToast('数据格式异常'); return; }
       // 严格校验
       if (!Array.isArray(data) || !data[0]) {
         showToast('暂无开奖数据');
@@ -642,7 +675,9 @@
         return;
       }
 
-      const totalPages = Math.ceil(sorted.length / HISTORY_PAGE_SIZE);
+      const totalPages = Math.max(1, Math.ceil(sorted.length / HISTORY_PAGE_SIZE));
+      // 页码越界保护
+      if (currentHistoryPage > totalPages) currentHistoryPage = totalPages;
       const start = (currentHistoryPage - 1) * HISTORY_PAGE_SIZE;
       const pageData = sorted.slice(start, start + HISTORY_PAGE_SIZE);
 

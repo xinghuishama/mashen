@@ -33,7 +33,7 @@
   };
 
   // 预计算号码属性
-  const numProps = new Array(50);
+  let numProps = new Array(50);
   for (let n = 1; n <= 49; n++) {
     const head = Math.floor(n / 10);
     const tail = n % 10;
@@ -133,7 +133,12 @@
   }
 
   // ========== Worker 消息处理 ==========
+  // 优先使用主线程传来的 numProps，避免数据重复；无则回退到内置数据
   self.onmessage = function (e) {
+    // 若主线程传来有效 numProps，直接替换内置数据，消除 Worker/主线程数据重复
+    if (e.data.numProps && e.data.numProps.length >= 50) {
+      numProps = e.data.numProps;
+    }
     const input = e.data.input || '';
     const killNums = e.data.killNums || [];
     const filters = e.data.filters || [];
