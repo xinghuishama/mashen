@@ -1,5 +1,8 @@
 /* ======================== 全局重置与主题背景 ======================== */
-*{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
 body {
   font-family: 'Orbitron', system-ui, sans-serif;
   background: radial-gradient(circle at 20% 80%, rgba(0,255,234,0.1) 0%, transparent 50%),
@@ -42,6 +45,7 @@ body {
   -webkit-user-select: none;
   overflow: hidden;
 }
+/* 顶部高光：减小面积，提升数字可读性 */
 .ball-3d::after {
   content: '';
   position: absolute;
@@ -55,7 +59,7 @@ body {
 }
 .ball-3d:active { transform: scale(0.92); }
 
-/* 红球3D */
+/* 红球3D：165deg 统一渐变方向 */
 .ball-red {
   background:
     radial-gradient(circle at 28% 20%, rgba(255,255,255,0.3) 0%, transparent 18%),
@@ -73,7 +77,7 @@ body {
     linear-gradient(165deg, #33cc33 0%, #118811 60%, #005500 100%);
 }
 
-/* 蓝球3D */
+/* 蓝球3D：与红绿球同方向同渐变程度 */
 .ball-blue {
   background:
     radial-gradient(circle at 28% 20%, rgba(255,255,255,0.3) 0%, transparent 18%),
@@ -83,7 +87,11 @@ body {
 }
 
 /* 已被命中（斩杀）的号码变为灰色 */
-.ball-gray { background: #666 !important; box-shadow: 0 0 4px rgba(0,0,0,0.5); filter: none !important; }
+.ball-gray {
+  background: #666 !important;
+  box-shadow: 0 0 4px rgba(0,0,0,0.5);
+  filter: none !important;
+}
 
 /* 命中次数角标 */
 .hit-mark {
@@ -115,11 +123,28 @@ body {
   text-shadow: 0 0 2px rgba(255,255,255,0.5), 0 0 4px rgba(0,0,0,0.8);
 }
 
-/* 分析结果区小球尺寸微调 */
-#result .ball-3d { width: 32px; height: 32px; font-size: 12px; }
-#result .ball-3d::after { width: 20%; height: 12%; top: 10%; left: 12%; }
-#result .ball-3d .hit-mark { font-size: 9px; bottom: 0px; right: 2px; }
-#result .ball-3d .hit-mark.cross { font-size: 12px; bottom: -2px; right: 1px; }
+/* 分析结果区小球尺寸微调（高光进一步缩小，防止遮挡数字） */
+#result .ball-3d {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+}
+#result .ball-3d::after {
+  width: 20%;   /* 缩小高光宽度 */
+  height: 12%;  /* 缩小高光高度 */
+  top: 10%;
+  left: 12%;
+}
+#result .ball-3d .hit-mark {
+  font-size: 9px;
+  bottom: 0px;
+  right: 2px;
+}
+#result .ball-3d .hit-mark.cross {
+  font-size: 12px;
+  bottom: -2px;
+  right: 1px;
+}
 
 /* 独苗高亮脉冲动画 */
 @keyframes flashPulse {
@@ -134,49 +159,88 @@ body {
 
 /* 斩杀线（平均频次分割线） */
 .kill-line::before, .kill-line::after {
-  content: '\2702'; position: absolute; top: 50%; transform: translateY(-50%);
-  color: #b5443a; font-size: 1.2rem; animation: scissor 2s ease-in-out infinite;
+  content: '\2702';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #b5443a;
+  font-size: 1.2rem;
+  animation: scissor 2s ease-in-out infinite;
 }
 .kill-line::before { left: 0; }
 .kill-line::after { right: 0; }
 
 /* ======================== 移动端抽屉 ======================== */
-.drawer-mobile { transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275); z-index: 50; will-change: transform; }
-.drawer-mobile.open { transform: translateY(0); }
+.drawer-mobile {
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  z-index: 50;
+  will-change: transform;
+}
+.drawer-mobile.open {
+  transform: translateY(0);
+}
 
 /* 底部导航栏 */
 .bottom-nav {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-  background: #0a0a12cc; backdrop-filter: blur(12px);
-  border-top: 1px solid rgba(0,255,234,0.4); padding: 8px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #0a0a12cc;
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(0,255,234,0.4);
+  padding: 8px;
   padding-bottom: env(safe-area-inset-bottom, 8px);
 }
-.bottom-nav .nav-item { transition: all 0.2s; cursor: pointer; user-select: none; -webkit-user-select: none; }
+.bottom-nav .nav-item {
+  transition: all 0.2s;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
 
 /* 筛选器选中态高亮 */
 .filter-checkbox:checked + .filter-label {
   background: linear-gradient(135deg, rgba(0,255,234,0.9) 0%, rgba(0,102,255,0.9) 100%) !important;
-  color: #000 !important; box-shadow: 0 0 10px rgba(0,255,234,0.4) !important;
+  color: #000 !important;
+  box-shadow: 0 0 10px rgba(0,255,234,0.4) !important;
   border-color: transparent !important;
 }
 
 /* 隐藏滚动条 */
 .hide-scrollbar::-webkit-scrollbar { display: none; }
-.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
 /* 开奖卡片容器 */
 .lottery-card {
-  background: rgba(30, 35, 50, 0.65); border-radius: 24px; padding: 18px;
-  border: 1px solid rgba(100, 120, 150, 0.3); backdrop-filter: blur(12px);
+  background: rgba(30, 35, 50, 0.65);
+  border-radius: 24px;
+  padding: 18px;
+  border: 1px solid rgba(100, 120, 150, 0.3);
+  backdrop-filter: blur(12px);
 }
 
 /* 刷新按钮 */
 .refresh-btn-orange {
   background: linear-gradient(135deg, #fbbf24 0%, #f97316 100%);
-  color: #1a1a2e; border: none; padding: 12px 32px; border-radius: 40px;
-  font-weight: bold; font-size: 16px; display: flex; align-items: center;
-  gap: 8px; margin: 20px auto 0; box-shadow: 0 4px 10px rgba(251,191,36,0.3);
-  cursor: pointer; touch-action: manipulation;
+  color: #1a1a2e;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 40px;
+  font-weight: bold;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 20px auto 0;
+  box-shadow: 0 4px 10px rgba(251,191,36,0.3);
+  cursor: pointer;
+  touch-action: manipulation;
 }
 .refresh-btn-orange:active { transform: scale(0.96); }
 
@@ -353,12 +417,17 @@ body {
   border-radius: 10px;
   padding: 10px;
   margin-bottom: 8px;
+  min-width: 0; /* 关键：防止 flex 子项撑开容器导致溢出 */
+  overflow: hidden;
 }
 .history-item-header {
   font-size: 12px;
   color: #00ffea;
   margin-bottom: 8px;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .history-balls-row {
   display: flex;
@@ -377,22 +446,23 @@ body {
   overflow-y: auto;
 }
 
-/* 历史记录小屏适配 */
+/* 历史记录小屏适配：进一步压缩防止溢出 */
 @media (max-width: 420px) {
-  .history-ball-card { min-width: 38px; }
-  .history-ball-number { font-size: 16px; padding: 4px 1px; }
-  .history-ball-tag { font-size: 10px; padding: 1px; }
+  .history-ball-card { min-width: 36px; }
+  .history-ball-number { font-size: 15px; padding: 4px 1px; }
+  .history-ball-tag { font-size: 9px; padding: 1px; }
   .history-plus-sign { font-size: 16px; padding: 0 1px; }
   .history-balls-row { gap: 2px; }
   .history-item { padding: 8px 6px; }
-  .history-item-header { font-size: 12px; margin-bottom: 6px; }
+  .history-item-header { font-size: 11px; margin-bottom: 6px; }
 }
 @media (max-width: 360px) {
-  .history-ball-card { min-width: 34px; }
-  .history-ball-number { font-size: 14px; padding: 3px 1px; }
-  .history-ball-tag { font-size: 9px; }
+  .history-ball-card { min-width: 32px; }
+  .history-ball-number { font-size: 13px; padding: 3px 1px; }
+  .history-ball-tag { font-size: 8px; }
   .history-plus-sign { font-size: 14px; }
   .history-balls-row { gap: 1px; }
+  .history-item-header { font-size: 10px; }
 }
 
 /* ======================== 独苗飞入动画 ======================== */

@@ -7,9 +7,12 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>神码再现 v3.4 · 优化版</title>
+<title>神码再现 v3.5 · 重构版</title>
+<!-- Orbitron 字体：科幻机甲风格 -->
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<!-- Tailwind CSS 工具库 -->
 <script src="https://cdn.tailwindcss.com"></script>
+<!-- 视频流播放器依赖 -->
 <script src="https://cdn.jsdelivr.net/npm/flv.js@1.6.2/dist/flv.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.0/dist/hls.min.js"></script>
 <link rel="stylesheet" href="style.css">
@@ -19,14 +22,14 @@
   <!-- 顶部标题区 -->
   <header class="relative overflow-hidden rounded-t-xl bg-gradient-to-r from-[#00ffea]/20 via-[#9d00ff]/20 to-[#ff0055]/20 border-b border-[#00ffea]/30 p-6 text-center">
     <h1 class="relative z-10 text-3xl font-black bg-gradient-to-r from-[#00ffea] via-[#ff0055] to-[#9d00ff] bg-clip-text text-transparent tracking-wider">神码再现</h1>
-    <p class="relative z-10 text-sm text-gray-400 mt-2 tracking-widest">命中衰减 · 频次动态调整 · 独苗守护特效</p>
+    <p class="relative z-10 text-sm text-gray-400 mt-2 tracking-widest">命中衰减 · 频次动态调整 · 独苗守护特效 · 0次统计</p>
   </header>
 
   <!-- 输入分析区 -->
   <section class="bg-[#0a0a12] border-x border-b border-[#00ffea]/20 p-4 rounded-b-xl shadow-[0_0_30px_rgba(0,255,234,0.2)]">
     <textarea id="numbers" rows="3" maxlength="30000" class="w-full bg-[#0a0a12] border border-[#00ffea]/30 rounded-lg p-3 text-[#00ffea] font-mono text-sm resize-y min-h-[100px] focus:outline-none focus:border-[#00ffea] transition-all" placeholder="输入号码或生肖，例如: 12 25 36 龙蛇马 8 17 29 41"></textarea>
     <div class="flex justify-between items-center mt-2 text-xs text-gray-500 font-mono">
-      <span>智能分析引擎 <span class="text-emerald-400 text-[10px]">(防抖200ms · 上限5000个号码)</span></span>
+      <span>智能分析引擎 <span class="text-emerald-400 text-[10px]">(防抖200ms · 上限5000个号码 · Worker+主线程双保险)</span></span>
       <div class="flex gap-3">
         <span>有效: <span id="charCount" class="text-[#00ffea] font-bold">0</span></span>
         <span id="numberWarn" class="text-red-400 hidden">⚠️ 已截断至5000个</span>
@@ -75,7 +78,7 @@
     </button>
   </section>
 
-  <footer class="mt-6 text-center text-xs text-gray-600 tracking-widest pb-4">神码再现 · 杀码助手完美版 v3.4</footer>
+  <footer class="mt-6 text-center text-xs text-gray-600 tracking-widest pb-4">神码再现 · 杀码助手重构版 v3.5</footer>
 </main>
 
 <!-- 底部导航栏 -->
@@ -109,6 +112,7 @@
 <!-- Toast 提示 -->
 <div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-[#0a0a12] border border-[#00ffea]/30 text-[#00ffea] px-6 py-3 rounded-lg shadow-[0_0_20px_rgba(0,255,234,0.3)] transform translate-y-20 opacity-0 transition-all duration-300 z-[200] pointer-events-none"></div>
 
+<!-- 数据定义必须在主逻辑之前加载 -->
 <script src="data.js"></script>
 <script src="app.js"></script>
 </body>
