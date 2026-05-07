@@ -25,8 +25,7 @@ body {
   z-index: -1;
 }
 
-/* ======================== 3D 号码球（分析结果区） ======================== */
-./* ======================== 3D 号码球（优化版） ======================== */
+/* ======================== 3D 号码球（分析结果区 · 优化版） ======================== */
 .ball-3d {
   position: relative;
   width: 36px;
@@ -37,9 +36,10 @@ body {
   justify-content: center;
   font-size: 14px;
   font-weight: 700;
-  font-family: 'Orbitron', sans-serif;
   color: #fff;
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.5), 0 8px 16px rgba(0,0,0,0.3),
+              inset 0 -3px 8px rgba(0,0,0,0.3), inset 0 3px 8px rgba(255,255,255,0.4);
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
@@ -47,34 +47,27 @@ body {
   transition: transform .25s cubic-bezier(.175, .885, .32, 1.275);
   transform: translateZ(0);
   will-change: transform;
-
-  /* 通用立体阴影 */
-  box-shadow:
-    0 4px 8px rgba(0,0,0,0.5),
-    0 8px 16px rgba(0,0,0,0.3),
-    inset 0 -3px 8px rgba(0,0,0,0.3),
-    inset 0 3px 8px rgba(255,255,255,0.4);
   border: none;
 }
 .ball-3d:active {
   transform: scale(0.92);
 }
 
-/* 球体顶部高光（默认） */
+/* 顶部高光（使用 ::before 避免与底部阴影冲突） */
 .ball-3d::before {
   content: '';
   position: absolute;
-  top: 10%;
-  left: 18%;
-  width: 28%;
-  height: 16%;
+  top: 12%;
+  left: 14%;
+  width: 22%;
+  height: 14%;
   background: radial-gradient(ellipse at center, rgba(255,255,255,0.75) 0%, transparent 70%);
   border-radius: 50%;
   pointer-events: none;
   z-index: 1;
 }
 
-/* 球体底部环境阴影 */
+/* 底部环境投影 */
 .ball-3d::after {
   content: '';
   position: absolute;
@@ -90,7 +83,7 @@ body {
   pointer-events: none;
 }
 
-/* ---------- 红球 3D ---------- */
+/* 红球 3D */
 .ball-red {
   background:
     radial-gradient(circle at 28% 20%, rgba(255,255,255,0.35) 0%, transparent 20%),
@@ -99,7 +92,7 @@ body {
     linear-gradient(165deg, #ff3333 0%, #cc0000 55%, #990000 100%);
 }
 
-/* ---------- 绿球 3D ---------- */
+/* 绿球 3D */
 .ball-green {
   background:
     radial-gradient(circle at 28% 20%, rgba(255,255,255,0.35) 0%, transparent 20%),
@@ -108,7 +101,7 @@ body {
     linear-gradient(165deg, #33cc33 0%, #118811 55%, #005500 100%);
 }
 
-/* ---------- 蓝球 3D ---------- */
+/* 蓝球 3D */
 .ball-blue {
   background:
     radial-gradient(circle at 28% 20%, rgba(255,255,255,0.35) 0%, transparent 20%),
@@ -117,24 +110,52 @@ body {
     linear-gradient(165deg, #4488ff 0%, #2244cc 55%, #112288 100%);
 }
 
-/* 已被命中（斩杀）的灰色球覆盖 */
+/* 已被命中（斩杀）的号码变为灰色 */
 .ball-gray {
   background: #666 !important;
   box-shadow: 0 0 4px rgba(0,0,0,0.5) !important;
   filter: none !important;
 }
 
-/* 保留分析结果区域的小球尺寸调整 */
+/* 命中次数角标（保持不变） */
+.hit-mark {
+  position: absolute;
+  bottom: 1px;
+  right: 3px;
+  color: #ffeb3b;
+  font-size: 10px;
+  font-weight: 900;
+  font-family: monospace;
+  z-index: 2;
+  text-shadow: 0 0 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.7), -1px -1px 0 rgba(0,0,0,0.5);
+  background: transparent;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  line-height: 1;
+  pointer-events: none;
+}
+.hit-mark.cross {
+  color: #ff3333;
+  font-size: 14px;
+  bottom: -1px;
+  right: 2px;
+  text-shadow: 0 0 2px rgba(255,255,255,0.5), 0 0 4px rgba(0,0,0,0.8);
+}
+
+/* 分析结果区小球尺寸微调（适配优化后的伪元素） */
 #result .ball-3d {
   width: 32px;
   height: 32px;
   font-size: 12px;
 }
 #result .ball-3d::before {
-  width: 22%;
-  height: 13%;
-  top: 8%;
-  left: 14%;
+  width: 25%;
+  height: 15%;
+  top: 14%;
+  left: 17%;
 }
 #result .ball-3d .hit-mark {
   font-size: 9px;
@@ -289,7 +310,6 @@ body {
   opacity: 0;
   transform: scale(0);
 }
-/* 蛋形球顶部高光 */
 .result-ball::after {
   content: '';
   position: absolute;
@@ -301,19 +321,16 @@ body {
   border-radius: 50%;
   pointer-events: none;
 }
-/* 红球蛋形 */
 .result-ball-red {
   background:
     radial-gradient(ellipse at 50% 25%, rgba(255,255,255,0.22) 0%, transparent 50%),
     linear-gradient(180deg, #ff5555 0%, #dd1111 45%, #aa0000 100%);
 }
-/* 绿球蛋形 */
 .result-ball-green {
   background:
     radial-gradient(ellipse at 50% 25%, rgba(255,255,255,0.22) 0%, transparent 50%),
     linear-gradient(180deg, #44dd44 0%, #229922 45%, #116611 100%);
 }
-/* 蓝球蛋形 */
 .result-ball-blue {
   background:
     radial-gradient(ellipse at 50% 25%, rgba(255,255,255,0.22) 0%, transparent 50%),
@@ -327,7 +344,6 @@ body {
   align-self: center;
   padding-bottom: 16px;
 }
-/* 球内底部标签 */
 .result-ball-meta {
   position: absolute;
   bottom: 7px;
@@ -340,14 +356,12 @@ body {
   white-space: nowrap;
   letter-spacing: 0.2px;
 }
-/* 五行文字颜色 */
 .wx-gold { color: #FFD700; }
 .wx-wood { color: #32CD32; }
 .wx-water { color: #00BFFF; }
 .wx-fire { color: #FF4444; }
 .wx-earth { color: #CD853F; }
 
-/* 大球弹出动画 */
 @keyframes ballAppear {
   0% { transform: scale(0) rotate(-180deg); opacity: 0; }
   60% { transform: scale(1.15) rotate(10deg); opacity: 1; }
@@ -355,7 +369,6 @@ body {
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
 
-/* 蛋形球小屏适配 */
 @media (max-width: 420px) {
   .result-ball { width: 42px; height: 56px; font-size: 15px; padding-top: 10px; }
   .result-balls-row { gap: 4px; }
@@ -418,7 +431,7 @@ body {
   border-radius: 10px;
   padding: 10px;
   margin-bottom: 8px;
-  min-width: 0; /* 关键：防止 flex 子项撑开容器导致溢出 */
+  min-width: 0;
   overflow: hidden;
 }
 .history-item-header {
@@ -447,7 +460,6 @@ body {
   overflow-y: auto;
 }
 
-/* 历史记录小屏适配：进一步压缩防止溢出 */
 @media (max-width: 420px) {
   .history-ball-card { min-width: 36px; }
   .history-ball-number { font-size: 15px; padding: 4px 1px; }
