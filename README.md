@@ -1,5 +1,48 @@
+# 神码再现 v3.4 — GitHub Pages 部署版
+
+> 🎯 一个可直接部署到 GitHub Pages 的六合彩智能分析工具。离线可用，Worker 加速，Web 版与 APK 版共用同一套前端代码。
+
+## 在线体验
+
+部署后访问地址：
+```
+https://你的用户名.github.io/shenma/
+```
+
+## 部署步骤（30 秒搞定）
+
+### 方式 1：直接上传（最简单）
+
+1. 访问 [github.com/new](https://github.com/new) 创建新仓库
+2. 仓库名建议：`shenma`（或其他你喜欢的名字）
+3. 上传这 5 个文件到仓库根目录：
+   ```
+   index.html
+   app.js
+   worker.js
+   style.css
+   data.js
+   ```
+4. 仓库 → **Settings → Pages** → Source 选 **Deploy from a branch** → 选 `main` 分支 → Save
+5. 等待 1-2 分钟，访问 `https://你的用户名.github.io/shenma/`
+
+### 方式 2：Git 命令行
+
+```bash
+git clone https://github.com/你的用户名/shenma.git
+cd shenma
+cp /path/to/这5个文件/ .
+git add .
+git commit -m "v3.4 initial"
+git push origin main
+```
+
+然后去仓库 **Settings → Pages** 开启 Pages 服务即可。
+
+---
+
 ## 项目特性
-彩票智能分析工具
+
 | 特性 | 说明 |
 |------|------|
 | ⚡ Web Worker 全量计算 | 解析 + 频次统计 + 筛选命中全部移入 Worker，主线程零阻塞 |
@@ -34,3 +77,27 @@
 | `data.js` | 静态数据：生肖 / 波色 / 五行 / 数段 / numProps 预计算 |
 
 ---
+
+## APK 打包
+
+如果需要打包成 Android APK，请使用对应的 Android Studio 工程：
+
+[下载 shenma-v34.zip（Android Studio 工程）](https://你的发布地址/shenma-v34.zip)
+
+或者参考这个仓库的 `android/` 目录（如果有）。
+
+---
+
+## 截图预览
+
+![预览](preview.jpg)
+
+---
+
+## 开源协议
+
+MIT License — 自由使用，二次开发请注明出处。
+
+---
+
+> 💡 提示：GitHub Pages 免费额度无流量限制，适合个人长期托管。

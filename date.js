@@ -1,11 +1,10 @@
-// ======================== data.js — 静态数据定义 ========================
-// 供主线程 app.js 渲染使用，Worker 内也自含一份相同数据以保证独立运行
+// ======================== data.js — 静态数据定义（保持不变） ========================
+// 供主线程 app.js 使用，Worker 内也内置一份以保证独立运行
 (function () {
   "use strict";
 
   const MAX_NUMBERS = 5000;
 
-  // 2026年（丙午·马年）生肖号码映射
   const SHENGXIAO = {
     鼠:[7,19,31,43],   牛:[6,18,30,42],   虎:[5,17,29,41],
     兔:[4,16,28,40],   龙:[3,15,27,39],   蛇:[2,14,26,38],
@@ -13,7 +12,6 @@
     鸡:[10,22,34,46],  狗:[9,21,33,45],   猪:[8,20,32,44]
   };
 
-  // 五行、波色分类数据
   const CATEGORIES = {
     金:[4,5,12,13,26,27,34,35,42,43],
     木:[8,9,16,17,24,25,38,39,46,47],
@@ -25,7 +23,6 @@
     绿波:[5,6,11,16,17,21,22,27,28,32,33,38,39,43,44,49]
   };
 
-  // 数段定义
   const DUAN = {
     "1段":[1,2,3,4,5,6,7],       "2段":[8,9,10,11,12,13,14],
     "3段":[15,16,17,18,19,20,21], "4段":[22,23,24,25,26,27,28],
@@ -33,7 +30,6 @@
     "7段":[43,44,45,46,47,48,49]
   };
 
-  // 号码属性预计算表（1-49）
   const numProps = new Array(50);
   for (let n = 1; n <= 49; n++) {
     const head = Math.floor(n / 10);
@@ -55,17 +51,11 @@
     numProps[n] = { head, tail, color, odd, five, sumOdd, duan, halfOddEven, shengXiao, sum };
   }
 
-  // 暴露到全局，兼容主线程(window)和Worker(self/importScripts)环境
-  const APP_DATA = {
+  window.APP_DATA = {
     MAX_NUMBERS,
     SHENGXIAO,
     CATEGORIES,
     DUAN,
     numProps
   };
-
-  // 主线程：挂到 window
-  if (typeof window !== 'undefined') window.APP_DATA = APP_DATA;
-  // Worker 环境：挂到 self（importScripts 加载后全局可访问）
-  if (typeof self !== 'undefined') self.APP_DATA = APP_DATA;
 })();
