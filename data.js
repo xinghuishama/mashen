@@ -1,5 +1,5 @@
 // ======================== data.js — 静态数据定义 ========================
-// 供主线程 app.js 渲染使用，Worker 内也自含一份相同数据以保证独立运行
+// 供主线程 app.js 使用，Worker 内也自含一份以保证独立
 (function () {
   "use strict";
 
@@ -55,7 +55,7 @@
     numProps[n] = { head, tail, color, odd, five, sumOdd, duan, halfOddEven, shengXiao, sum };
   }
 
-  // 暴露到全局，供 app.js 使用
+  // 暴露到全局
   window.APP_DATA = {
     MAX_NUMBERS,
     SHENGXIAO,

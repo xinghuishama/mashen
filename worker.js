@@ -1,12 +1,10 @@
-// ======================== worker.js — 独立 Worker（APK WebView 兼容版）========================
-// ❌ 不使用 Blob URL / Service Worker
-// ✅ 纯独立文件，通过 new Worker('worker.js') 加载
+// ======================== worker.js — 独立 Worker（带匹配函数缓存）========================
 (function () {
   "use strict";
 
   const MAX_NUMBERS = 5000;
 
-  // ========== 静态数据（自包含，不依赖主线程）==========
+  // 内置静态数据（主线程可覆盖）
   const SHENGXIAO = {
     鼠:[7,19,31,43],   牛:[6,18,30,42],   虎:[5,17,29,41],
     兔:[4,16,28,40],   龙:[3,15,27,39],   蛇:[2,14,26,38],
@@ -32,25 +30,26 @@
     "7段":[43,44,45,46,47,48,49]
   };
 
-  // 预计算号码属性
   let numProps = new Array(50);
-  for (let n = 1; n <= 49; n++) {
-    const head = Math.floor(n / 10);
-    const tail = n % 10;
-    const odd = n % 2 === 1 ? '单' : '双';
-    let color = CATEGORIES.红波.includes(n) ? 'red' : (CATEGORIES.蓝波.includes(n) ? 'blue' : 'green');
-    let five = CATEGORIES.金.includes(n) ? '金' : (CATEGORIES.木.includes(n) ? '木' : (CATEGORIES.水.includes(n) ? '水' : (CATEGORIES.火.includes(n) ? '火' : '土')));
-    const sum = head + tail;
-    const sumOdd = sum % 2 === 1 ? '合数单' : '合数双';
-    let duan = '';
-    for (const [dk, dv] of Object.entries(DUAN)) { if (dv.includes(n)) { duan = dk; break; } }
-    const halfOddEven = n > 24 ? (n % 2 === 1 ? '大单' : '大双') : (n % 2 === 1 ? '小单' : '小双');
-    let shengXiao = '';
-    for (const [sk, sv] of Object.entries(SHENGXIAO)) { if (sv.includes(n)) { shengXiao = sk; break; } }
-    numProps[n] = { head, tail, color, odd, five, sumOdd, duan, halfOddEven, shengXiao, sum };
+  function buildNumProps() {
+    for (let n = 1; n <= 49; n++) {
+      const head = Math.floor(n / 10);
+      const tail = n % 10;
+      const odd = n % 2 === 1 ? '单' : '双';
+      let color = CATEGORIES.红波.includes(n) ? 'red' : (CATEGORIES.蓝波.includes(n) ? 'blue' : 'green');
+      let five = CATEGORIES.金.includes(n) ? '金' : (CATEGORIES.木.includes(n) ? '木' : (CATEGORIES.水.includes(n) ? '水' : (CATEGORIES.火.includes(n) ? '火' : '土')));
+      const sum = head + tail;
+      const sumOdd = sum % 2 === 1 ? '合数单' : '合数双';
+      let duan = '';
+      for (const [dk, dv] of Object.entries(DUAN)) { if (dv.includes(n)) { duan = dk; break; } }
+      const halfOddEven = n > 24 ? (n % 2 === 1 ? '大单' : '大双') : (n % 2 === 1 ? '小单' : '小双');
+      let shengXiao = '';
+      for (const [sk, sv] of Object.entries(SHENGXIAO)) { if (sv.includes(n)) { shengXiao = sk; break; } }
+      numProps[n] = { head, tail, color, odd, five, sumOdd, duan, halfOddEven, shengXiao, sum };
+    }
   }
+  buildNumProps();
 
-  // ========== 安全输入解析（不用 \s 正则，避免转义问题）==========
   function parseInputWorker(input) {
     if (!input || !input.trim()) return [];
     let cleaned = input.replace(/《.*?》/g, ' ').replace(/[^0-9鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, ' ')
@@ -73,7 +72,7 @@
     return results;
   }
 
-  // ========== 筛选条件编译器 ==========
+  // 条件编译器（与主线程一致）
   function buildMatchFunc(cond) {
     if (cond.startsWith('生肖')) {
       const sx = cond.slice(2);
@@ -114,17 +113,27 @@
     return function () { return false; };
   }
 
-  // ========== 高性能命中计算（Uint8Array + 上限剪枝）==========
+  // 匹配函数缓存
+  let cachedFuncs = null;
+  let lastFiltersSignature = '';
+
   function computeHitCounts(killNums, filters) {
     const hits = new Uint8Array(50);
     const killSet = new Set(killNums);
-    const matchFuncs = filters.map(buildMatchFunc);
+
+    // 如果筛选条件变化，重建匹配函数
+    const sig = JSON.stringify(filters);
+    if (!cachedFuncs || sig !== lastFiltersSignature) {
+      cachedFuncs = filters.map(buildMatchFunc);
+      lastFiltersSignature = sig;
+    }
+
     for (let n = 1; n <= 49; n++) {
       let hit = killSet.has(n) ? 1 : 0;
-      for (let i = 0; i < matchFuncs.length; i++) {
-        if (matchFuncs[i](n)) {
+      for (let i = 0; i < cachedFuncs.length; i++) {
+        if (cachedFuncs[i](n)) {
           hit++;
-          if (hit > 3) break; // 剪枝：超过 3 次命中后不再继续计算
+          if (hit > 3) break;
         }
       }
       hits[n] = hit;
@@ -132,10 +141,8 @@
     return hits;
   }
 
-  // ========== Worker 消息处理 ==========
-  // 优先使用主线程传来的 numProps，避免数据重复；无则回退到内置数据
   self.onmessage = function (e) {
-    // 若主线程传来有效 numProps，直接替换内置数据，消除 Worker/主线程数据重复
+    // 优先使用主线程传递的 numProps（确保数据一致）
     if (e.data.numProps && e.data.numProps.length >= 50) {
       numProps = e.data.numProps;
     }
@@ -143,17 +150,13 @@
     const killNums = e.data.killNums || [];
     const filters = e.data.filters || [];
 
-    // 解析输入
     const nums = parseInputWorker(input);
     const rawCount = new Uint16Array(50);
     for (let i = 0; i < nums.length; i++) {
       rawCount[nums[i]]++;
     }
 
-    // 计算命中
     const hitCounts = computeHitCounts(killNums, filters);
-
-    // 调整频次
     const adjustedCount = new Uint16Array(50);
     let adjustedTotal = 0;
     let unique = 0;
@@ -166,7 +169,6 @@
       if (adj > 0) unique++;
     }
 
-    // 返回结果
     self.postMessage({
       adjustedCount: Array.from(adjustedCount),
       adjustedTotal: adjustedTotal,
