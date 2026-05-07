@@ -1,6 +1,6 @@
 // ======================== app.js — 主线程核心逻辑 v3.4 优化版 ========================
 // 设计目标：APK WebView 100% 兼容 · Worker 全量卸载 · 离线缓存 · 无 inline JS
-// 优化点：事件委托、复制回退、波色统一、Worker 缓存、历史数据校验
+// 优化点：事件委托、复制回退、波色统一、Worker 缓存、历史数据校验、直播超时切换
 (function () {
   "use strict";
 
@@ -38,14 +38,14 @@
 
   // ======================== 状态管理 ========================
   let state = {
-    killNums: [],                     // 杀码数字
-    selectedFilters: {                // 各维度已选条件
+    killNums: [],
+    selectedFilters: {
       shengxiao:[], haomatou:[], weishu:[], shuduan:[],
       bose:[], wuxing:[], bandanshuang:[], heshu:[]
     }
   };
-  let subscribers = [];               // 状态变更订阅者
-  let lastAnalysisResult = null;      // 最近一次分析结果（用于复制）
+  let subscribers = [];
+  let lastAnalysisResult = null;
 
   function subscribe(fn) { subscribers.push(fn); }
   function notify() { subscribers.forEach(function (fn) { fn(); }); }
@@ -65,7 +65,6 @@
     Object.keys(state.selectedFilters).forEach(function (k) { state.selectedFilters[k] = []; });
     notify();
   }
-  /** 获取所有筛选条件（展平为一维数组） */
   function getFilterSet() {
     return Object.values(state.selectedFilters).flat();
   }
@@ -77,7 +76,7 @@
         killNums: state.killNums,
         selectedFilters: state.selectedFilters
       }));
-    } catch (e) { /* 静默失败 */ }
+    } catch (e) {}
   }
   function loadState() {
     try {
@@ -104,7 +103,6 @@
   }
 
   // ======================== 通用工具函数 ========================
-  /** XSS 防护：转义 HTML 特殊字符 */
   function escapeHtml(str) {
     if (!str) return '';
     return String(str)
@@ -114,7 +112,6 @@
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
   }
-
   function showToast(msg) {
     const t = DOM.toast;
     if (!t) return;
@@ -142,7 +139,7 @@
         if (Number.isInteger(n) && n >= 1 && n <= 49) results.push(n);
       }
     }
-    results = Array.from(new Set(results)); // 去重
+    results = Array.from(new Set(results));
     let truncated = false;
     if (results.length > MAX_NUMBERS) { results = results.slice(0, MAX_NUMBERS); truncated = true; }
     return { nums: results, truncated: truncated };
@@ -163,10 +160,6 @@
     return cachedMatchFuncs;
   }
 
-  /**
-   * 根据单个条件字符串构建匹配函数
-   * 支持：生肖、头单/双、尾、段、波单/双、五行、半单双、合数、合
-   */
   function buildMatchFunc(cond) {
     if (cond.startsWith('生肖')) {
       const sx = cond.slice(2);
@@ -321,7 +314,6 @@
         currentUniqueElement = null;
       }
 
-      // 按频次分组
       const freqMap = new Map();
       for (let n = 1; n <= 49; n++) {
         const f = adjustedCount[n];
@@ -345,7 +337,6 @@
 
       const sortedFreqMap = new Map();
       const htmlParts = [];
-
       for (let fi = 0; fi < freqs.length; fi++) {
         const f = freqs[fi];
         if (!killDrawn && f <= (adjustedTotal / unique)) {
@@ -510,25 +501,20 @@
         showToast('数据字段不完整');
         return;
       }
-
       try {
         localStorage.setItem(LS_CACHE_KEY, JSON.stringify({ data: data, time: Date.now() }));
       } catch (e) {}
-
       if (lastLotteryPeriod !== item.expect) {
         lastLotteryPeriod = item.expect;
         isCurrentDrawComplete = false;
       }
-
       renderLottery(item);
-
       if (!isCurrentDrawComplete && checkDrawComplete(item)) {
         isCurrentDrawComplete = true;
         showToast('当期开奖已完成，自动刷新停止');
       } else {
         showToast('刷新成功');
       }
-
       if (DOM.lastRefreshTime) DOM.lastRefreshTime.textContent = '上次刷新：' + new Date().toLocaleTimeString();
     } catch (e) {
       console.error('fetchLottery error:', e);
@@ -550,10 +536,9 @@
     }
   }
 
-  /** 渲染顶部开奖区蛋形球 */
   function renderLottery(item) {
     const codes = String(item.openCode || '').split(',').map(function (c) { return escapeHtml(c.trim()); });
-    // 波色可能为中文或英文，统一处理
+    // 波色统一：中文转英文
     const waves = String(item.wave || '').split(',').map(function (w) {
       w = w.trim();
       if (w === '红' || w === 'red') return 'red';
@@ -595,7 +580,6 @@
       container.appendChild(div);
     }
     void container.offsetHeight;
-
     if (DOM.lotteryPeriod) DOM.lotteryPeriod.textContent = escapeHtml(item.expect || '--');
     if (DOM.lotteryTime) DOM.lotteryTime.textContent = escapeHtml((item.openTime || '--').replace(' ', '\n'));
   }
@@ -643,18 +627,15 @@
       const pagi = document.getElementById('historyPagination');
       ensureHistorySorted();
       const sorted = currentHistorySorted;
-
       if (!sorted || sorted.length === 0) {
         if (cont) cont.innerHTML = '<div class="text-gray-500 py-8 text-center">暂无数据</div>';
         if (pagi) pagi.classList.add('hidden');
         return;
       }
-
       const totalPages = Math.max(1, Math.ceil(sorted.length / HISTORY_PAGE_SIZE));
       if (currentHistoryPage > totalPages) currentHistoryPage = totalPages;
       const start = (currentHistoryPage - 1) * HISTORY_PAGE_SIZE;
       const pageData = sorted.slice(start, start + HISTORY_PAGE_SIZE);
-
       const frag = document.createDocumentFragment();
       for (let i = 0; i < pageData.length; i++) {
         const item = pageData[i];
@@ -677,7 +658,6 @@
         cont.innerHTML = '';
         cont.appendChild(frag);
       }
-
       const pageNumEl = document.getElementById('historyPageNum');
       const totalPagesEl = document.getElementById('historyTotalPages');
       if (pageNumEl) pageNumEl.textContent = currentHistoryPage;
@@ -694,7 +674,6 @@
     }
   }
 
-  // 暴露给内联调用（历史翻页）
   window.prevHistoryPage = function () {
     if (currentHistoryPage > 1) { currentHistoryPage--; renderHistoryPage(); }
   };
@@ -707,9 +686,6 @@
   // ======================== 底部抽屉系统 ========================
   const DrawerSystem = {
     current: null,
-    /**
-     * 根据抽屉类型返回 innerHTML 字符串（不再绑定事件，由全局委托处理）
-     */
     templates: {
       shama: function () {
         return '<textarea id="kill-input" rows="3" class="w-full bg-[#1a1a2a] border border-[#00ffea]/30 rounded-lg p-3 text-[#00ffea] font-mono text-sm">' + state.killNums.join(' ') + '</textarea>';
@@ -847,7 +823,6 @@
       this.current = null;
       this.updateNavState(null);
     },
-    /** 全局事件委托：在 drawer-content 上统一处理 */
     bindGlobalDelegation: function () {
       const content = DOM.drawer_content;
       if (!content || content._delegationBound) return;
@@ -872,7 +847,6 @@
       });
 
       content.addEventListener('click', function (e) {
-        // 历史分页按钮
         if (e.target.id === 'history-prev') {
           if (currentHistoryPage > 1) { currentHistoryPage--; renderHistoryPage(); }
         }
@@ -881,7 +855,6 @@
           const totalPages = Math.ceil(currentHistorySorted.length / HISTORY_PAGE_SIZE);
           if (currentHistoryPage < totalPages) { currentHistoryPage++; renderHistoryPage(); }
         }
-        // 直播源切换按钮
         if (e.target.classList.contains('live-src-btn')) {
           const idx = parseInt(e.target.dataset.srcIdx, 10);
           if (!isNaN(idx)) {
@@ -963,11 +936,9 @@
     if (!text.trim()) return;
     fallbackCopy(text.trim());
   }
-
   function copyNumber(n) {
     fallbackCopy(String(n).padStart(2, '0'));
   }
-
   function fallbackCopy(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(function () {
@@ -979,7 +950,6 @@
       execCopy(text);
     }
   }
-
   function execCopy(text) {
     const ta = document.createElement('textarea');
     ta.value = text;
@@ -995,13 +965,14 @@
     }
     document.body.removeChild(ta);
   }
-
   window.copyResult = copyResult;
 
-  // ======================== 直播播放器 ========================
+  // ======================== 直播播放器（超时自动切换）========================
   let currentHls = null;
   let currentFlvPlayer = null;
   let liveSourceIndex = 0;
+  let liveSourceTimer = null;                // 超时计时器
+  const LIVE_SOURCE_TIMEOUT = 15000;        // 15秒超时
 
   const LIVE_SOURCES = [
     { name: 'API获取', type: 'auto', url: '' },
@@ -1009,7 +980,15 @@
     { name: 'FLV源1', type: 'flv', url: 'https://media.macaumarksix.com/live/marksix.flv' }
   ];
 
+  function clearLiveTimer() {
+    if (liveSourceTimer) {
+      clearTimeout(liveSourceTimer);
+      liveSourceTimer = null;
+    }
+  }
+
   function connectLiveSource(idx) {
+    clearLiveTimer();
     const video = document.getElementById('live-video');
     const loading = document.getElementById('live-loading');
     const error = document.getElementById('live-error');
@@ -1023,6 +1002,12 @@
 
     const src = LIVE_SOURCES[idx];
 
+    // 设置15秒超时，超时后自动尝试下一个源
+    liveSourceTimer = setTimeout(function () {
+      console.warn('直播源加载超时: ' + src.name);
+      tryNextSource();
+    }, LIVE_SOURCE_TIMEOUT);
+
     if (src.type === 'auto') {
       fetch('https://macaumarksix.com/api/live2?_t=' + Date.now())
         .then(function (r) { return r.json(); })
@@ -1030,6 +1015,7 @@
           if (data && data[0] && data[0].videoUrl) {
             playStream(data[0].videoUrl, detectStreamType(data[0].videoUrl));
           } else {
+            clearLiveTimer();
             if (idx + 1 < LIVE_SOURCES.length) {
               setTimeout(function () { connectLiveSource(idx + 1); }, 1000);
             } else {
@@ -1038,6 +1024,7 @@
           }
         })
         .catch(function () {
+          clearLiveTimer();
           if (idx + 1 < LIVE_SOURCES.length) {
             setTimeout(function () { connectLiveSource(idx + 1); }, 1000);
           } else {
@@ -1047,18 +1034,116 @@
     } else if (src.url) {
       playStream(src.url, src.type);
     } else {
+      clearLiveTimer();
       showLiveError();
     }
   }
 
-  function detectStreamType(url) { /* ... 保持原逻辑 */ }
-  function playStream(url, type) { /* ... 保持原逻辑，此处省略，实际文件不省略 */ }
-  function tryNextSource() { /* ... */ }
-  function showLiveError() { /* ... */ }
-  function destroyLivePlayer() { /* ... */ }
+  function detectStreamType(url) {
+    if (url.indexOf('.m3u8') !== -1) return 'hls';
+    if (url.indexOf('.flv') !== -1) return 'flv';
+    return 'hls';
+  }
 
-  // ======================== 自动刷新 ========================
-  function initAutoRefresh() { /* 保持不变 */ }
+  function playStream(url, type) {
+    const video = document.getElementById('live-video');
+    const loading = document.getElementById('live-loading');
+    if (!video) return;
+
+    if (type === 'hls' && window.Hls && Hls.isSupported()) {
+      currentHls = new Hls({ enableWorker: true, lowLatencyMode: true });
+      currentHls.loadSource(url);
+      currentHls.attachMedia(video);
+      currentHls.on(Hls.Events.MANIFEST_PARSED, function () {
+        clearLiveTimer();
+        if (loading) loading.classList.add('hidden');
+        video.play().catch(function () {});
+      });
+      currentHls.on(Hls.Events.ERROR, function () {
+        clearLiveTimer();
+        tryNextSource();
+      });
+    } else if (type === 'flv' && window.flvjs && flvjs.isSupported()) {
+      currentFlvPlayer = flvjs.createPlayer({ type: 'flv', url: url, isLive: true });
+      currentFlvPlayer.attachMediaElement(video);
+      currentFlvPlayer.load();
+      currentFlvPlayer.play();
+      currentFlvPlayer.on(flvjs.Events.LOADING_COMPLETE, function () {
+        clearLiveTimer();
+        if (loading) loading.classList.add('hidden');
+      });
+      currentFlvPlayer.on(flvjs.Events.ERROR, function () {
+        clearLiveTimer();
+        tryNextSource();
+      });
+      // 额外保险：如果3秒后还未完成加载，不做超时处理（超时由外层控制）
+      setTimeout(function () {
+        if (loading) loading.classList.add('hidden');
+      }, 3000);
+    } else {
+      // 浏览器原生支持（如 Safari 原生 HLS）
+      video.src = url;
+      video.addEventListener('loadedmetadata', function () {
+        clearLiveTimer();
+        if (loading) loading.classList.add('hidden');
+      });
+      video.addEventListener('error', function () {
+        clearLiveTimer();
+        tryNextSource();
+      });
+      video.play().catch(function () {});
+    }
+  }
+
+  function tryNextSource() {
+    clearLiveTimer();
+    destroyLivePlayer();
+    if (liveSourceIndex + 1 < LIVE_SOURCES.length) {
+      liveSourceIndex++;
+      const btns = document.querySelectorAll('.live-src-btn');
+      btns.forEach(function (b, i) {
+        if (i === liveSourceIndex) {
+          b.classList.remove('bg-[#1a1a2a]', 'text-gray-400');
+          b.classList.add('bg-[#00ffea]', 'text-black');
+        } else {
+          b.classList.remove('bg-[#00ffea]', 'text-black');
+          b.classList.add('bg-[#1a1a2a]', 'text-gray-400');
+        }
+      });
+      connectLiveSource(liveSourceIndex);
+    } else {
+      showLiveError();
+    }
+  }
+
+  function showLiveError() {
+    clearLiveTimer();
+    const loading = document.getElementById('live-loading');
+    const error = document.getElementById('live-error');
+    if (loading) loading.classList.add('hidden');
+    if (error) error.classList.remove('hidden');
+  }
+
+  function destroyLivePlayer() {
+    clearLiveTimer();
+    if (currentHls) { currentHls.destroy(); currentHls = null; }
+    if (currentFlvPlayer) { currentFlvPlayer.destroy(); currentFlvPlayer = null; }
+    const video = document.getElementById('live-video');
+    if (video) { video.pause(); video.removeAttribute('src'); video.load(); }
+  }
+
+  // ======================== 自动刷新控制 ========================
+  function initAutoRefresh() {
+    setInterval(function () {
+      if (isCurrentDrawComplete) return;
+      const now = new Date();
+      const h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+      const totalSec = h * 3600 + m * 60 + s;
+      const startSec = 21 * 3600 + 33 * 60 + 20;
+      const endSec = 21 * 3600 + 35 * 60 + 0;
+      if (document.visibilityState === 'visible' && totalSec >= startSec && totalSec <= endSec) fetchLottery();
+    }, 5000);
+  }
 
   // ======================== 初始化入口 ========================
   function init() {
@@ -1069,7 +1154,6 @@
     initResultDelegation();
     DrawerSystem.bindGlobalDelegation();
 
-    // 按钮绑定
     if (DOM.exampleBtn) {
       DOM.exampleBtn.addEventListener('click', function () {
         if (DOM.numbers) DOM.numbers.value = '龙蛇马 12 25 36 8 17 29 41 5 19 33 47';
