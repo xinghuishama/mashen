@@ -1,5 +1,5 @@
-// ======================== app.js — 主线程核心逻辑 v3.4 ========================
-// 设计目标：APK WebView 100% 兼容 · Worker 全量卸载 · 离线缓存 · 无 inline JS
+// ======================== app.js — 主线程核心逻辑 v3.5 ========================
+// 设计目标：APK WebView 100% 兼容 · Worker 全量卸载 · 离线缓存 · 无 inline JS · 工程级安全
 (function () {
   "use strict";
 
@@ -51,8 +51,8 @@
 
   function setKillNums(newNums) { state.killNums = [...newNums]; notify(); }
   function toggleFilter(category, value, checked) {
-    // 校验 category 合法性，防止非法 key 导致 undefined 操作崩溃
-    if (!state.selectedFilters[category]) return;
+    // 校验 category 合法性：用 hasOwnProperty 防原型污染（__proto__ / constructor 等）
+    if (!Object.prototype.hasOwnProperty.call(state.selectedFilters, category)) return;
     const arr = state.selectedFilters[category];
     // 使用 Set 去重查询，O(1) 替代 O(n)
     const set = new Set(arr);
@@ -66,8 +66,9 @@
     Object.keys(state.selectedFilters).forEach(function (k) { state.selectedFilters[k] = []; });
     notify();
   }
+  // 返回 Set（O(1) has）替代数组 includes（O(n)），热点路径性能优化
   function getFilterSet() {
-    return Object.values(state.selectedFilters).flat();
+    return new Set(Object.values(state.selectedFilters).flat());
   }
 
   // ======================== localStorage 持久化 ========================
@@ -96,12 +97,13 @@
         });
       }
 
-      // selectedFilters：深拷贝数组，避免引用共享
+      // selectedFilters：深拷贝 + hasOwnProperty 防原型污染
       if (parsed.selectedFilters && typeof parsed.selectedFilters === 'object') {
         Object.keys(state.selectedFilters).forEach(function (k) {
+          if (!Object.prototype.hasOwnProperty.call(parsed.selectedFilters, k)) return;
           const val = parsed.selectedFilters[k];
           if (Array.isArray(val)) {
-            state.selectedFilters[k] = Array.from(val);
+            state.selectedFilters[k] = Array.from(val).slice(0, 50);
           }
         });
       }
@@ -1219,7 +1221,7 @@
       terminateWorker();
     });
 
-    console.log('%c\u2705 神码再现 v3.4 已加载（APK WebView 终极优化版）', 'color:#00ffea;font-weight:bold');
+    console.log('%c\u2705 神码再现 v3.5 已加载（工程级安全 · Set优化 · 单源Worker）', 'color:#00ffea;font-weight:bold');
   }
 
   document.addEventListener('DOMContentLoaded', init);
