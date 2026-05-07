@@ -26,114 +26,115 @@ body {
 }
 
 /* ======================== 3D 号码球（分析结果区） ======================== */
+./* ======================== 3D 号码球（优化版） ======================== */
 .ball-3d {
   position: relative;
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  font-weight: bold;
-  color: white;
+  font-weight: 700;
+  font-family: 'Orbitron', sans-serif;
+  color: #fff;
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3), inset 0 -2px 4px rgba(0,0,0,0.2);
-  transition: filter 0.2s ease, transform 0.1s;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
   overflow: hidden;
+  transition: transform .25s cubic-bezier(.175, .885, .32, 1.275);
+  transform: translateZ(0);
+  will-change: transform;
+
+  /* 通用立体阴影 */
+  box-shadow:
+    0 4px 8px rgba(0,0,0,0.5),
+    0 8px 16px rgba(0,0,0,0.3),
+    inset 0 -3px 8px rgba(0,0,0,0.3),
+    inset 0 3px 8px rgba(255,255,255,0.4);
+  border: none;
 }
-/* 顶部高光：减小面积，提升数字可读性 */
-.ball-3d::after {
+.ball-3d:active {
+  transform: scale(0.92);
+}
+
+/* 球体顶部高光（默认） */
+.ball-3d::before {
   content: '';
   position: absolute;
-  top: 12%;
-  left: 14%;
-  width: 22%;
-  height: 14%;
+  top: 10%;
+  left: 18%;
+  width: 28%;
+  height: 16%;
   background: radial-gradient(ellipse at center, rgba(255,255,255,0.75) 0%, transparent 70%);
   border-radius: 50%;
   pointer-events: none;
-}
-.ball-3d:active { transform: scale(0.92); }
-
-/* 红球3D：165deg 统一渐变方向 */
-.ball-red {
-  background:
-    radial-gradient(circle at 28% 20%, rgba(255,255,255,0.3) 0%, transparent 18%),
-    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 40%),
-    radial-gradient(circle at 50% 100%, rgba(0,0,0,0.3) 0%, transparent 55%),
-    linear-gradient(165deg, #ff3333 0%, #cc0000 60%, #990000 100%);
+  z-index: 1;
 }
 
-/* 绿球3D */
-.ball-green {
-  background:
-    radial-gradient(circle at 28% 20%, rgba(255,255,255,0.3) 0%, transparent 18%),
-    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 40%),
-    radial-gradient(circle at 50% 100%, rgba(0,0,0,0.3) 0%, transparent 55%),
-    linear-gradient(165deg, #33cc33 0%, #118811 60%, #005500 100%);
-}
-
-/* 蓝球3D：与红绿球同方向同渐变程度 */
-.ball-blue {
-  background:
-    radial-gradient(circle at 28% 20%, rgba(255,255,255,0.3) 0%, transparent 18%),
-    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 40%),
-    radial-gradient(circle at 50% 100%, rgba(0,0,0,0.3) 0%, transparent 55%),
-    linear-gradient(165deg, #4488ff 0%, #2244cc 60%, #112288 100%);
-}
-
-/* 已被命中（斩杀）的号码变为灰色 */
-.ball-gray {
-  background: #666 !important;
-  box-shadow: 0 0 4px rgba(0,0,0,0.5);
-  filter: none !important;
-}
-
-/* 命中次数角标 */
-.hit-mark {
+/* 球体底部环境阴影 */
+.ball-3d::after {
+  content: '';
   position: absolute;
-  bottom: 1px;
-  right: 3px;
-  color: #ffeb3b;
-  font-size: 10px;
-  font-weight: 900;
-  font-family: monospace;
-  z-index: 2;
-  text-shadow: 0 0 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.7), -1px -1px 0 rgba(0,0,0,0.5);
-  background: transparent;
-  width: auto;
-  height: auto;
-  border-radius: 0;
-  box-shadow: none;
-  padding: 0;
-  line-height: 1;
+  z-index: -1;
+  left: 10%;
+  top: 10%;
+  width: 80%;
+  height: 80%;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.35);
+  filter: blur(8px);
+  transform: translate(6px, 6px);
   pointer-events: none;
 }
 
-/* 杀码专属红叉角标 */
-.hit-mark.cross {
-  color: #ff3333;
-  font-size: 14px;
-  bottom: -1px;
-  right: 2px;
-  text-shadow: 0 0 2px rgba(255,255,255,0.5), 0 0 4px rgba(0,0,0,0.8);
+/* ---------- 红球 3D ---------- */
+.ball-red {
+  background:
+    radial-gradient(circle at 28% 20%, rgba(255,255,255,0.35) 0%, transparent 20%),
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.08) 0%, transparent 42%),
+    radial-gradient(circle at 50% 100%, rgba(0,0,0,0.35) 0%, transparent 60%),
+    linear-gradient(165deg, #ff3333 0%, #cc0000 55%, #990000 100%);
 }
 
-/* 分析结果区小球尺寸微调（高光进一步缩小，防止遮挡数字） */
+/* ---------- 绿球 3D ---------- */
+.ball-green {
+  background:
+    radial-gradient(circle at 28% 20%, rgba(255,255,255,0.35) 0%, transparent 20%),
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.08) 0%, transparent 42%),
+    radial-gradient(circle at 50% 100%, rgba(0,0,0,0.35) 0%, transparent 60%),
+    linear-gradient(165deg, #33cc33 0%, #118811 55%, #005500 100%);
+}
+
+/* ---------- 蓝球 3D ---------- */
+.ball-blue {
+  background:
+    radial-gradient(circle at 28% 20%, rgba(255,255,255,0.35) 0%, transparent 20%),
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.08) 0%, transparent 42%),
+    radial-gradient(circle at 50% 100%, rgba(0,0,0,0.35) 0%, transparent 60%),
+    linear-gradient(165deg, #4488ff 0%, #2244cc 55%, #112288 100%);
+}
+
+/* 已被命中（斩杀）的灰色球覆盖 */
+.ball-gray {
+  background: #666 !important;
+  box-shadow: 0 0 4px rgba(0,0,0,0.5) !important;
+  filter: none !important;
+}
+
+/* 保留分析结果区域的小球尺寸调整 */
 #result .ball-3d {
   width: 32px;
   height: 32px;
   font-size: 12px;
 }
-#result .ball-3d::after {
-  width: 25%;   /* 缩小高光宽度 */
-  height: 15%;  /* 缩小高光高度 */
-  top: 14%;
-  left: 17%;
+#result .ball-3d::before {
+  width: 22%;
+  height: 13%;
+  top: 8%;
+  left: 14%;
 }
 #result .ball-3d .hit-mark {
   font-size: 9px;
