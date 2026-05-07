@@ -130,10 +130,10 @@ body {
   font-size: 12px;
 }
 #result .ball-3d::after {
-  width: 20%;   /* 缩小高光宽度 */
-  height: 12%;  /* 缩小高光高度 */
-  top: 10%;
-  left: 12%;
+  width: 25%;   /* 缩小高光宽度 */
+  height: 15%;  /* 缩小高光高度 */
+  top: 14%;
+  left: 17%;
 }
 #result .ball-3d .hit-mark {
   font-size: 9px;
