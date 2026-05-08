@@ -1,5 +1,7 @@
-// ======================== app.js — 主线程核心逻辑 v3.5.1 抽屉修复版 ========================
-// 修复：Tailwind CDN 无法扫描 JS 动态类名 → 改用自定义 .d-* 样式类
+// ======================== app.js — 主线程核心逻辑 v3.5.2 完整修复版 ========================
+// 修复：1) 抽屉 Tailwind 类名不可见 → 改用自定义 .d-* 样式
+//       2) 历史分页 dhidden/hidden 混乱 → 统一 dhidden
+//       3) 分页按钮事件委托 → closest 防冒泡
 (function () {
   "use strict";
 
@@ -26,7 +28,6 @@
     ids.forEach(function (id) {
       DOM[id.replace(/-/g, "_")] = document.getElementById(id);
     });
-    // 兜底：如果关键元素缺失，尝试实时获取
     if (!DOM.drawer_content) DOM.drawer_content = document.getElementById("drawer-content");
     if (!DOM.drawer_container) DOM.drawer_container = document.getElementById("drawer-container");
     if (!DOM.drawer_overlay) DOM.drawer_overlay = document.getElementById("drawer-overlay");
@@ -680,17 +681,20 @@
     });
   }
 
+  // ======================== 历史分页渲染（v3.5.2 核心修复） ========================
   function renderHistoryPage() {
     try {
       const cont = document.getElementById("historyContent");
       const pagi = document.getElementById("historyPagination");
       ensureHistorySorted();
       const sorted = currentHistorySorted;
+
       if (!sorted || sorted.length === 0) {
-        if (cont) cont.innerHTML = '<div class="text-gray-500 py-8 text-center">暂无数据</div>';
-        if (pagi) pagi.classList.add("hidden");
+        if (cont) cont.innerHTML = '<div style="color:#9ca3af; padding:32px 0; text-align:center;">暂无数据</div>';
+        if (pagi) pagi.classList.add("dhidden");
         return;
       }
+
       const totalPages = Math.max(1, Math.ceil(sorted.length / HISTORY_PAGE_SIZE));
       if (currentHistoryPage > totalPages) currentHistoryPage = totalPages;
       const start = (currentHistoryPage - 1) * HISTORY_PAGE_SIZE;
@@ -707,7 +711,7 @@
           const zodiacs = (item.zodiac || "").split(",").map(function (z) { return escapeHtml(z.trim()); });
           ballsHtml = renderBallsHTML(codes, waves, zodiacs);
         } else {
-          ballsHtml = '<div class="flex justify-center items-center py-6 text-amber-400 text-sm font-medium">待开奖</div>';
+          ballsHtml = '<div style="display:flex; justify-content:center; align-items:center; padding:24px 0; color:#fbbf24; font-size:14px; font-weight:500;">待开奖</div>';
         }
         const div = document.createElement("div");
         div.className = "history-item";
@@ -718,14 +722,22 @@
         cont.innerHTML = "";
         cont.appendChild(frag);
       }
+
       const pageNumEl = document.getElementById("historyPageNum");
       const totalPagesEl = document.getElementById("historyTotalPages");
       if (pageNumEl) pageNumEl.textContent = currentHistoryPage;
       if (totalPagesEl) totalPagesEl.textContent = totalPages;
+
+      // 统一使用 dhidden 控制分页显隐（与模板初始类名一致）
       if (pagi) {
-        pagi.classList.toggle("hidden", totalPages <= 1);
-        const prevBtn = pagi.querySelector("button:first-child");
-        const nextBtn = pagi.querySelector("button:last-child");
+        if (totalPages <= 1) {
+          pagi.classList.add("dhidden");
+        } else {
+          pagi.classList.remove("dhidden");
+        }
+        // 用 ID 直接定位按钮，避免 first-child/last-child 选错
+        const prevBtn = document.getElementById("history-prev");
+        const nextBtn = document.getElementById("history-next");
         if (prevBtn) prevBtn.disabled = currentHistoryPage <= 1;
         if (nextBtn) nextBtn.disabled = currentHistoryPage >= totalPages;
       }
@@ -743,7 +755,7 @@
     if (currentHistoryPage < totalPages) { currentHistoryPage++; renderHistoryPage(); }
   };
 
-  // ======================== 底部抽屉系统（v3.5.1 核心修复：自定义样式类） ========================
+  // ======================== 底部抽屉系统（v3.5.2 全部改用自定义 .d-* 样式类） ========================
   const DrawerSystem = {
     current: null,
     templates: {
@@ -796,7 +808,7 @@
         const sel = state.selectedFilters.wuxing;
         return '<div class="dspace-y">' + Object.entries(wx).map(function (entry) {
           const k = entry[0], v = entry[1];
-          return '<div class="dlabel-row"><label class="ditems-center" style="gap:8px;min-width:0;"><input type="checkbox" class="filter-checkbox hidden" value="' + k + '" data-drawer="wuxing" ' + (sel.includes(k) ? "checked" : "") + '><span class="filter-label dbtn dbtn-fixed">' + k + '</span></label><span class="dlabel-text">' + v + "</span></div>";
+          return '<div class="dlabel-row"><label class="ditems-center" style="gap:8px;min-width:0;"><input type="checkbox" class="filter-checkbox hidden" value="' + k + '" data-drawer="wuxing" ' + (sel.includes(k) ? "checked" : "") + '><span class="filter-label dbtn dbtn-fixed">' + k + '</span></label><span class="dtruncate dtext-cyan-dim">' + v + "</span></div>";
         }).join("") + "</div>";
       },
       bandanshuang: function () {
@@ -861,7 +873,6 @@
       const titleText = titles[type] || "筛选器";
       if (DOM.drawer_title) DOM.drawer_title.textContent = titleText;
 
-      // 关键修复：多重兜底获取 drawer_content
       let contentDiv = DOM.drawer_content || document.getElementById("drawer-content");
       if (!contentDiv) {
         console.error("drawer-content 元素缺失");
@@ -929,20 +940,27 @@
         }
       });
 
+      // v3.5.2 修复：使用 closest 防止点击到内部 svg/span 时事件失效
       content.addEventListener("click", function (e) {
-        if (e.target.id === "history-prev") {
+        const prevBtn = e.target.closest("#history-prev");
+        const nextBtn = e.target.closest("#history-next");
+        if (prevBtn) {
           if (currentHistoryPage > 1) { currentHistoryPage--; renderHistoryPage(); }
+          return;
         }
-        if (e.target.id === "history-next") {
+        if (nextBtn) {
           ensureHistorySorted();
           const totalPages = Math.ceil(currentHistorySorted.length / HISTORY_PAGE_SIZE);
           if (currentHistoryPage < totalPages) { currentHistoryPage++; renderHistoryPage(); }
+          return;
         }
-        if (e.target.classList.contains("live-src-btn") || e.target.classList.contains("dlive-btn")) {
-          const idx = parseInt(e.target.dataset.srcIdx, 10);
+
+        const liveBtn = e.target.closest(".dlive-btn");
+        if (liveBtn) {
+          const idx = parseInt(liveBtn.dataset.srcIdx, 10);
           if (!isNaN(idx)) {
             liveSourceIndex = idx;
-            const btns = document.querySelectorAll(".live-src-btn, .dlive-btn");
+            const btns = document.querySelectorAll(".dlive-btn");
             btns.forEach(function (b, i) {
               if (i === idx) {
                 b.classList.add("active");
@@ -958,6 +976,7 @@
             });
             connectLiveSource(idx);
           }
+          return;
         }
       });
 
@@ -1195,7 +1214,7 @@
     destroyLivePlayer();
     if (liveSourceIndex + 1 < LIVE_SOURCES.length) {
       liveSourceIndex++;
-      const btns = document.querySelectorAll(".live-src-btn, .dlive-btn");
+      const btns = document.querySelectorAll(".dlive-btn");
       btns.forEach(function (b, i) {
         if (i === liveSourceIndex) {
           b.classList.add("active");
@@ -1297,7 +1316,7 @@
       terminateWorker();
     });
 
-    console.log("%c✅ 神码再现 v3.5.1 抽屉修复版已加载", "color:#00ffea;font-weight:bold");
+    console.log("%c✅ 神码再现 v3.5.2 完整修复版已加载", "color:#00ffea;font-weight:bold");
   }
 
   document.addEventListener("DOMContentLoaded", init);
