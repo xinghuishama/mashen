@@ -172,7 +172,7 @@ body {
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
-  overflow: visiable;
+  overflow: visible;
   transition: transform .25s cubic-bezier(.175, .885, .32, 1.275);
   transform: translateZ(0);
   background:
@@ -628,9 +628,7 @@ body {
 /* ========== 修复五行抽屉号码溢出 ========== */
 
 /* 1. 修补 3D 球的溢出与拼写错误 */
-.ball-3d {
-  overflow: hidden;            /* 把原来的 visiable 修正为 hidden，防止伪元素阴影溢出 */
-}
+
 
 /* 2. 抽屉内容容器：允许必要时横向滚动（保留视觉规整，但不越界） */
 .drawer-mobile > *,
