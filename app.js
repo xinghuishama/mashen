@@ -804,13 +804,25 @@
         }).join("");
       },
       wuxing: function () {
-        const wx = { 金: "04 05 12 13 26 27 34 35 42 43", 木: "08 09 16 17 24 25 38 39 46 47", 水: "01 14 15 22 23 30 31 44 45", 火: "02 03 10 11 18 19 32 33 40 41 48 49", 土: "06 07 20 21 28 29 36 37" };
-        const sel = state.selectedFilters.wuxing;
-        return '<div class="dspace-y">' + Object.entries(wx).map(function (entry) {
-          const k = entry[0], v = entry[1];
-          return '<div class="dlabel-row"><label class="ditems-center" style="gap:8px;min-width:0;"><input type="checkbox" class="filter-checkbox hidden" value="' + k + '" data-drawer="wuxing" ' + (sel.includes(k) ? "checked" : "") + '><span class="filter-label dbtn dbtn-fixed">' + k + '</span></label><span class="dtruncate dtext-cyan-dim">' + v + "</span></div>";
-        }).join("") + "</div>";
-      },
+  const wx = {
+    "金": "04 05 12 13 26 27 34 35 42 43",
+    "木": "08 09 16 17 24 25 38 39 46 47",
+    "水": "01 14 15 22 23 30 31 44 45",
+    "火": "02 03 10 11 18 19 32 33 40 41 48 49",
+    "土": "06 07 20 21 28 29 36 37"
+  };
+  const sel = state.selectedFilters.wuxing;
+  return '<div class="dspace-y">' + Object.entries(wx).map(function (entry) {
+    const k = entry[0], v = entry[1];
+    return '<div class="wuxing-row">' +
+      '<label class="ditems-center" style="gap:8px;min-width:0;flex-shrink:0;">' +
+        '<input type="checkbox" class="filter-checkbox hidden" value="' + k + '" data-drawer="wuxing" ' + (sel.includes(k) ? "checked" : "") + '>' +
+        '<span class="filter-label dbtn dbtn-fixed wuxing-btn-fixed">' + k + '</span>' +
+      '</label>' +
+      '<span class="wuxing-nums">' + v + '</span>' +
+    '</div>';
+  }).join("") + '</div>';
+},
       bandanshuang: function () {
         const items = [["合数单", "小单", "大单"], ["合数双", "小双", "大双"]];
         const sel = state.selectedFilters.bandanshuang;

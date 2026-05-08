@@ -627,37 +627,62 @@ body {
 }
 /* ========== 修复五行抽屉号码溢出 ========== */
 
-/* 1. 修补 3D 球的溢出与拼写错误 */
+/* ========== 修复五行抽屉号码溢出（保留下角标 visible）========== */
 
-
-/* 2. 抽屉内容容器：允许必要时横向滚动（保留视觉规整，但不越界） */
-.drawer-mobile > *,
-[class*="dgrid-"] {
-  max-width: 100%;
+/* 1. 允许五行抽屉内每行横向滚动（不裁文本，不裁角标） */
+.wuxing-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;       /* 隐藏滚动条，保持干净 */
+  scrollbar-width: none;
 }
-[class*="dgrid-"]::-webkit-scrollbar {
+.wuxing-row::-webkit-scrollbar {
   display: none;
 }
 
-/* 3. 小屏下把 6 列网格改为 3 列，避免号码球、按钮挤变形 */
+/* 2. 号码文本：允保留换行/滚动，不强制截断 */
+.wuxing-nums {
+  font-size: 14px;
+  color: rgba(0, 255, 234, 0.7);
+  white-space: nowrap;
+  flex-shrink: 0;
+  user-select: text;
+}
+
+/* 3. 抽屉内容容器：不剪内容，但用 max-width 锁边界 */
+.drawer-mobile > *,
+[class*="dgrid-"],
+.dflex-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+[class*="dgrid-"]::-webkit-scrollbar,
+.drawer-mobile > ::-webkit-scrollbar,
+.dflex-wrap::-webkit-scrollbar {
+  display: none;
+}
+
+/* 4. 移除全局裁剪（保留下角标溢出可见） */
+.dgrid-6 > *,
+.dgrid-4 > *,
+.dgrid-5 > * {
+  min-width: 0;
+  overflow: visible; /* 关键修复：不裁角标 */
+}
+
+/* 5. 小屏优化：6 列降为 3 列 */
 @media (max-width: 420px) {
   .dgrid-6 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-/* 4. 确保所有网格子项不会超出自己的格子 */
-.dgrid-6 > *,
-.dgrid-4 > *,
-.dgrid-5 > * {
-  min-width: 0;                /* 防止内容撑开网格 */
-  overflow: hidden;
-}
-
-/* 5. 固定宽度的五行按钮在小屏上进一步缩小 */
+/* 6. 五行按钮小屏进一步缩窄 */
 @media (max-width: 400px) {
   .wuxing-btn-fixed {
     width: 2.5rem !important;
@@ -670,8 +695,10 @@ body {
   }
 }
 
-/* 6. 如果抽屉自身还有 padding，确保宽度计算包含 padding */
-.drawer-mobile {
-  width: 100%;
-  box-sizing: border-box;
+/* 7. 确保 ball-3d 角标可见 */
+.ball-3d {
+  overflow: visible;
+}
+.ball-3d .hit-mark {
+  z-index: 5;
 }
