@@ -625,3 +625,55 @@ body {
   75% { transform: scale(1.1) rotate(-2deg); }
   100% { transform: scale(1) rotate(0); }
 }
+/* ========== 修复五行抽屉号码溢出 ========== */
+
+/* 1. 修补 3D 球的溢出与拼写错误 */
+.ball-3d {
+  overflow: hidden;            /* 把原来的 visiable 修正为 hidden，防止伪元素阴影溢出 */
+}
+
+/* 2. 抽屉内容容器：允许必要时横向滚动（保留视觉规整，但不越界） */
+.drawer-mobile > *,
+[class*="dgrid-"] {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;       /* 隐藏滚动条，保持干净 */
+}
+[class*="dgrid-"]::-webkit-scrollbar {
+  display: none;
+}
+
+/* 3. 小屏下把 6 列网格改为 3 列，避免号码球、按钮挤变形 */
+@media (max-width: 420px) {
+  .dgrid-6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* 4. 确保所有网格子项不会超出自己的格子 */
+.dgrid-6 > *,
+.dgrid-4 > *,
+.dgrid-5 > * {
+  min-width: 0;                /* 防止内容撑开网格 */
+  overflow: hidden;
+}
+
+/* 5. 固定宽度的五行按钮在小屏上进一步缩小 */
+@media (max-width: 400px) {
+  .wuxing-btn-fixed {
+    width: 2.5rem !important;
+    min-width: 2.5rem !important;
+    font-size: 11px;
+  }
+  .dbtn-fixed {
+    width: 2.5rem !important;
+    min-width: 2.5rem !important;
+  }
+}
+
+/* 6. 如果抽屉自身还有 padding，确保宽度计算包含 padding */
+.drawer-mobile {
+  width: 100%;
+  box-sizing: border-box;
+}
