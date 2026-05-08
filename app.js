@@ -1,10 +1,8 @@
-// ======================== app.js — 主线程核心逻辑 v3.5 重构版 ========================
-// 设计目标：APK WebView 100% 兼容 · Worker 全量卸载 + 主线程回退 · 0次统计 · 每秒刷新
-// 优化点：Worker 回退、0次渲染、AbortController 兼容、高光修正、历史记录防溢出
+// ======================== app.js — 主线程核心逻辑 v3.5.1 抽屉修复版 ========================
+// 修复：Tailwind CDN 无法扫描 JS 动态类名 → 改用自定义 .d-* 样式类
 (function () {
   "use strict";
 
-  // ======================== 配置与数据引用 ========================
   const DATA = window.APP_DATA || {};
   const MAX_NUMBERS = DATA.MAX_NUMBERS || 5000;
   const SHENGXIAO = DATA.SHENGXIAO || {};
@@ -18,7 +16,6 @@
   const LS_KEY = "shenma_v4_state";
   const LS_CACHE_KEY = "shenma_v4_lottery_cache";
 
-  // ======================== DOM 元素缓存 ========================
   const DOM = {};
   function cacheDOM() {
     const ids = [
@@ -29,9 +26,14 @@
     ids.forEach(function (id) {
       DOM[id.replace(/-/g, "_")] = document.getElementById(id);
     });
+    // 兜底：如果关键元素缺失，尝试实时获取
+    if (!DOM.drawer_content) DOM.drawer_content = document.getElementById("drawer-content");
+    if (!DOM.drawer_container) DOM.drawer_container = document.getElementById("drawer-container");
+    if (!DOM.drawer_overlay) DOM.drawer_overlay = document.getElementById("drawer-overlay");
+    if (!DOM.drawer_title) DOM.drawer_title = document.getElementById("drawer-title");
+    if (!DOM.drawer_close) DOM.drawer_close = document.getElementById("drawer-close");
   }
 
-  // ======================== 状态管理 ========================
   let state = {
     killNums: [],
     selectedFilters: {
@@ -41,7 +43,7 @@
   };
   let subscribers = [];
   let lastAnalysisResult = null;
-  let lastRawCount = null; // 缓存原始频次，用于0次统计
+  let lastRawCount = null;
 
   function subscribe(fn) { subscribers.push(fn); }
   function notify() { subscribers.forEach(function (fn) { fn(); }); }
@@ -63,14 +65,13 @@
     return Object.values(state.selectedFilters).flat();
   }
 
-  // ======================== localStorage 持久化 ========================
   function saveState() {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({
         killNums: state.killNums,
         selectedFilters: state.selectedFilters
       }));
-    } catch (e) { /* 静默失败，避免隐私模式报错阻断流程 */ }
+    } catch (e) {}
   }
   function loadState() {
     try {
@@ -94,7 +95,6 @@
     }
   }
 
-  // ======================== 通用工具函数 ========================
   function escapeHtml(str) {
     if (!str) return "";
     return String(str)
@@ -112,10 +112,8 @@
     setTimeout(function () { t.classList.add("translate-y-20", "opacity-0"); }, 2000);
   }
 
-  // ======================== 输入解析引擎 ========================
   function parseInputCount(input) {
     if (!input || !input.trim()) return { nums: [], truncated: false };
-    // 移除《》内容，保留数字与生肖汉字
     let cleaned = input.replace(/《.*?》/g, " ").replace(/[^0-9鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, " ")
                        .replace(/([鼠牛虎兔龙蛇马羊猴鸡狗猪])/g, " $1 ");
     const tokens = cleaned.split(" ").filter(function (t) { return t.length > 0; });
@@ -137,19 +135,15 @@
     return { nums: results, truncated: truncated };
   }
 
-  // ======================== 筛选条件匹配函数编译器 ========================
   let cachedMatchFuncs = null;
   let lastFilterSignature = "";
-  let cachedFilterSet = null;
 
   function getMatchFuncs() {
     const allConds = getFilterSet();
-    // 使用 join 生成轻量级签名，避免 JSON.stringify 大对象开销
     const sig = allConds.join("\x00");
     if (cachedMatchFuncs && sig === lastFilterSignature) return cachedMatchFuncs;
     lastFilterSignature = sig;
     cachedMatchFuncs = allConds.map(function (cond) { return buildMatchFunc(cond); });
-    cachedFilterSet = new Set(allConds);
     return cachedMatchFuncs;
   }
 
@@ -193,7 +187,6 @@
     return function () { return false; };
   }
 
-  // ======================== 主线程分析回退（Worker 失败时使用）========================
   function computeAnalysisMainThread(input, killNums, filters) {
     const nums = parseInputCount(input).nums;
     const rawCount = new Uint16Array(50);
@@ -222,7 +215,6 @@
     return { adjustedCount: Array.from(adjustedCount), adjustedTotal, unique, hitCounts: Array.from(hitCounts), rawCount: Array.from(rawCount) };
   }
 
-  // ======================== Web Worker 管理 ========================
   let analysisWorker = null;
   let workerReady = false;
 
@@ -234,7 +226,6 @@
       analysisWorker.onerror = function (e) {
         console.error("Worker error:", e);
         workerReady = false;
-        // Worker 出错时，立即使用主线程回退
         runAnalysisMainThread();
       };
       workerReady = true;
@@ -253,7 +244,7 @@
       const d = e.data;
       if (d.error) {
         console.error("Worker returned error:", d.error);
-        runAnalysisMainThread(); // Worker 返回错误，回退主线程
+        runAnalysisMainThread();
         return;
       }
       lastRawCount = d.rawCount;
@@ -263,7 +254,6 @@
     }
   }
 
-  // ======================== 独苗飞行特效 ========================
   let currentUniqueElement = null;
   let lastUniqueNum = null;
 
@@ -326,7 +316,7 @@
       } else {
         ball.remove();
         targetEl.classList.remove("flash-unique");
-        void targetEl.offsetWidth; // 强制重绘
+        void targetEl.offsetWidth;
         targetEl.classList.add("landing-shock", "flash-unique");
         setTimeout(function () { targetEl.classList.remove("landing-shock"); }, 400);
         showToast("\uD83C\uDFAF 独苗守护：" + String(targetNum).padStart(2, "0") + " 号");
@@ -335,7 +325,6 @@
     requestAnimationFrame(animate);
   }
 
-  // ======================== 分析结果渲染 ========================
   function renderResult(adjustedCount, adjustedTotal, unique, hitCounts, rawCount) {
     try {
       const container = DOM.result;
@@ -346,7 +335,6 @@
         currentUniqueElement = null;
       }
 
-      // 按频次分组（只包含 adjustedCount > 0 的号码）
       const freqMap = new Map();
       for (let n = 1; n <= 49; n++) {
         const f = adjustedCount[n];
@@ -360,7 +348,6 @@
       let killDrawn = false;
       const avg = unique ? (adjustedTotal / unique).toFixed(2) : "0.00";
 
-      // 独苗判定：仅有一个号码 adjustedCount > 0 且未被命中
       const unhitNumbers = [];
       for (let n = 1; n <= 49; n++) {
         if (adjustedCount[n] > 0 && hitCounts[n] === 0) unhitNumbers.push(n);
@@ -372,10 +359,8 @@
       const sortedFreqMap = new Map();
       const htmlParts = [];
 
-      // 渲染各频次分组
       for (let fi = 0; fi < freqs.length; fi++) {
         const f = freqs[fi];
-        // 斩杀线：首次出现低于平均频次的分组时插入分割线
         if (!killDrawn && f <= (adjustedTotal / unique)) {
           htmlParts.push('<div class="kill-line relative h-0.5 bg-gradient-to-r from-transparent via-[#00ffea] to-transparent my-3 rounded-full"></div>');
           killDrawn = true;
@@ -406,8 +391,6 @@
         htmlParts.push('<div class="text-center py-8 text-amber-400">\u26A1 所有号码频次归零，请调整筛选条件 \u26A1</div>');
       }
 
-      // ======================== 0次统计（新增）========================
-      // 当输入中未覆盖全部49个号码时，在斩杀线下方显示未出现号码
       const zeroCountNumbers = [];
       if (rawCount) {
         for (let n = 1; n <= 49; n++) {
@@ -415,7 +398,6 @@
         }
       }
       if (zeroCountNumbers.length > 0) {
-        // 如果斩杀线还没画，先画一条
         if (!killDrawn) {
           htmlParts.push('<div class="kill-line relative h-0.5 bg-gradient-to-r from-transparent via-[#00ffea] to-transparent my-3 rounded-full"></div>');
         }
@@ -430,13 +412,10 @@
         htmlParts.push("</div></div>");
       }
 
-      // 统计摘要卡片
       htmlParts.push('<div class="mt-4 grid grid-cols-3 gap-2 p-3 bg-[#1a1a2a] rounded-lg border border-[#00ffea]/20"><div class="text-center"><div class="text-[#00ffea] font-bold text-lg">' + unique + '</div><div class="text-xs text-gray-500">有效数字个数</div></div><div class="text-center"><div class="text-[#00ffea] font-bold text-lg">' + adjustedTotal + '</div><div class="text-xs text-gray-500">调整后总次数</div></div><div class="text-center"><div class="text-[#00ffea] font-bold text-lg">' + avg + '</div><div class="text-xs text-gray-500">调整后平均次数</div></div></div>');
 
-      // 一次性写入 DOM（字符串拼接后直接 innerHTML 比 DocumentFragment 更高效）
       container.innerHTML = htmlParts.join("");
 
-      // 独苗特效触发
       if (uniqueUnhitNum) {
         currentUniqueElement = DOM.result.querySelector('[data-num="' + uniqueUnhitNum + '"]');
         if (lastUniqueNum !== uniqueUnhitNum) {
@@ -456,7 +435,6 @@
     }
   }
 
-  // ======================== 事件代理：结果区号码点击复制 ========================
   function initResultDelegation() {
     const resultEl = DOM.result;
     if (!resultEl) return;
@@ -468,7 +446,6 @@
     });
   }
 
-  // ======================== 防抖分析调度 ========================
   let debounceTimer = null;
 
   function runAnalysis() {
@@ -500,7 +477,6 @@
             numProps: numProps
           });
         } else {
-          // Worker 不可用，主线程回退执行
           const res = computeAnalysisMainThread(input, state.killNums, getFilterSet());
           lastRawCount = res.rawCount;
           renderResult(res.adjustedCount, res.adjustedTotal, res.unique, res.hitCounts, res.rawCount);
@@ -511,7 +487,6 @@
     }, 200);
   }
 
-  // 显式主线程回退入口（供 Worker 错误回调使用）
   function runAnalysisMainThread() {
     try {
       const input = DOM.numbers ? DOM.numbers.value : "";
@@ -528,7 +503,6 @@
     saveState();
   }
 
-  // ======================== 开奖数据获取 ========================
   let isCurrentDrawComplete = false;
   let lastLotteryPeriod = "";
 
@@ -538,21 +512,18 @@
     return codes.length >= 7;
   }
 
-  // 安全 fetch，带超时、重试、AbortController 兼容
   async function safeFetch(url, options, retries) {
     options = options || {};
     retries = retries !== undefined ? retries : 2;
     for (let i = 0; i <= retries; i++) {
       try {
         let res;
-        // 检测 AbortController 兼容性（旧版 WebView 可能没有）
         if (typeof AbortController !== "undefined") {
           const ctrl = new AbortController();
           const tid = setTimeout(function () { ctrl.abort(); }, options.timeout || 8000);
           res = await fetch(url, Object.assign({}, options, { signal: ctrl.signal }));
           clearTimeout(tid);
         } else {
-          // 无 AbortController 时，使用 Promise.race 模拟超时
           const fetchPromise = fetch(url, options);
           const timeoutPromise = new Promise(function (_, reject) {
             setTimeout(function () { reject(new Error("Timeout")); }, options.timeout || 8000);
@@ -628,7 +599,6 @@
 
   function renderLottery(item) {
     const codes = String(item.openCode || "").split(",").map(function (c) { return escapeHtml(c.trim()); });
-    // 波色统一：中文/英文均映射为英文标识
     const waves = String(item.wave || "").split(",").map(function (w) {
       w = w.trim();
       if (w === "红" || w === "red") return "red";
@@ -643,7 +613,6 @@
     container.innerHTML = "";
     const wxClassMap = { 金: "wx-gold", 木: "wx-wood", 水: "wx-water", 火: "wx-fire", 土: "wx-earth" };
 
-    // 渲染前6个正码
     for (let i = 0; i < 6 && i < codes.length; i++) {
       const num = parseInt(codes[i], 10);
       const colorClass = waves[i] === "red" ? "result-ball-red" : (waves[i] === "green" ? "result-ball-green" : "result-ball-blue");
@@ -654,14 +623,12 @@
       div.innerHTML = '<div class="result-ball ' + colorClass + '" style="animation-delay: ' + (i * 150) + 'ms">' + escapeHtml(codes[i].padStart(2, "0")) + '<div class="result-ball-meta">' + escapeHtml(zodiacs[i] || "") + '/<span class="' + wxCls + '">' + wx + "</span></div></div>";
       container.appendChild(div);
     }
-    // 加号分隔
     if (codes.length >= 7) {
       const plus = document.createElement("div");
       plus.className = "result-plus-sign";
       plus.textContent = "+";
       container.appendChild(plus);
     }
-    // 特别号码
     if (codes.length >= 7) {
       const num = parseInt(codes[6], 10);
       const colorClass = waves[6] === "red" ? "result-ball-red" : (waves[6] === "green" ? "result-ball-green" : "result-ball-blue");
@@ -672,12 +639,11 @@
       div.innerHTML = '<div class="result-ball ' + colorClass + '" style="animation-delay: ' + (6 * 150) + 'ms">' + escapeHtml(codes[6].padStart(2, "0")) + '<div class="result-ball-meta">' + escapeHtml(zodiacs[6] || "") + '/<span class="' + wxCls + '">' + wx + "</span></div></div>";
       container.appendChild(div);
     }
-    void container.offsetHeight; // 强制重排触发动画
+    void container.offsetHeight;
     if (DOM.lotteryPeriod) DOM.lotteryPeriod.textContent = escapeHtml(item.expect || "--");
     if (DOM.lotteryTime) DOM.lotteryTime.textContent = escapeHtml((item.openTime || "--").replace(" ", "\n"));
   }
 
-  // ======================== 历史开奖记录 ========================
   let currentHistoryData = [];
   let currentHistorySorted = [];
   let currentHistoryPage = 1;
@@ -745,7 +711,7 @@
         }
         const div = document.createElement("div");
         div.className = "history-item";
-        div.innerHTML = '<div class="history-item-header">第' + expect.slice(4) + "期 \u00B7 " + escapeHtml(item.openTime && item.openTime.slice(5, 16) || "") + '</div><div class="history-balls-row">' + ballsHtml + "</div>";
+        div.innerHTML = '<div class="history-item-header">第' + expect.slice(4) + "期 · " + escapeHtml(item.openTime && item.openTime.slice(5, 16) || "") + '</div><div class="history-balls-row">' + ballsHtml + "</div>";
         frag.appendChild(div);
       }
       if (cont) {
@@ -768,7 +734,6 @@
     }
   }
 
-  // 全局分页函数（供 HTML 内联事件或事件委托调用）
   window.prevHistoryPage = function () {
     if (currentHistoryPage > 1) { currentHistoryPage--; renderHistoryPage(); }
   };
@@ -778,26 +743,26 @@
     if (currentHistoryPage < totalPages) { currentHistoryPage++; renderHistoryPage(); }
   };
 
-  // ======================== 底部抽屉系统 ========================
+  // ======================== 底部抽屉系统（v3.5.1 核心修复：自定义样式类） ========================
   const DrawerSystem = {
     current: null,
     templates: {
       shama: function () {
-        return '<textarea id="kill-input" rows="3" class="w-full bg-[#1a1a2a] border border-[#00ffea]/30 rounded-lg p-3 text-[#00ffea] font-mono text-sm">' + state.killNums.join(" ") + "</textarea>";
+        return '<textarea id="kill-input" rows="3" class="dinput">' + state.killNums.join(" ") + "</textarea>";
       },
       shengxiao: function () {
         const sxs = ["鼠", "牛", "虎", "兔", "龙", "蛇", "马", "羊", "猴", "鸡", "狗", "猪"];
         const sel = state.selectedFilters.shengxiao;
-        return '<div class="grid grid-cols-6 gap-1">' + sxs.map(function (sx) {
-          return '<label><input type="checkbox" class="filter-checkbox hidden" value="生肖' + sx + '" data-drawer="shengxiao" ' + (sel.includes("生肖" + sx) ? "checked" : "") + '><span class="filter-label block text-center py-2 bg-[#1a1a2a] rounded-lg text-sm text-gray-400 border border-[#00ffea]/20">' + sx + "</span></label>";
+        return '<div class="dgrid-6">' + sxs.map(function (sx) {
+          return '<label><input type="checkbox" class="filter-checkbox hidden" value="生肖' + sx + '" data-drawer="shengxiao" ' + (sel.includes("生肖" + sx) ? "checked" : "") + '><span class="filter-label dbtn">' + sx + "</span></label>";
         }).join("") + "</div>";
       },
       haomatou: function () {
         const heads = [["0头单", "1头单", "2头单", "3头单", "4头单"], ["0头双", "1头双", "2头双", "3头双", "4头双"]];
         const sel = state.selectedFilters.haomatou;
         return heads.map(function (row) {
-          return '<div class="flex gap-2 mb-2">' + row.map(function (h) {
-            return '<label class="flex-1"><input type="checkbox" class="filter-checkbox hidden" value="' + h + '" data-drawer="haomatou" ' + (sel.includes(h) ? "checked" : "") + '><span class="filter-label block text-center py-2 bg-[#1a1a2a] rounded-lg text-xs">' + h + "</span></label>";
+          return '<div class="dflex">' + row.map(function (h) {
+            return '<label class="dflex-1"><input type="checkbox" class="filter-checkbox hidden" value="' + h + '" data-drawer="haomatou" ' + (sel.includes(h) ? "checked" : "") + '><span class="filter-label dbtn dbtn-sm">' + h + "</span></label>";
           }).join("") + "</div>";
         }).join("");
       },
@@ -805,103 +770,125 @@
         const tails = [["0尾", "1尾", "2尾", "3尾", "4尾"], ["5尾", "6尾", "7尾", "8尾", "9尾"]];
         const sel = state.selectedFilters.weishu;
         return tails.map(function (row) {
-          return '<div class="flex gap-2 mb-2">' + row.map(function (t) {
-            return '<label class="flex-1"><input type="checkbox" class="filter-checkbox hidden" value="' + t + '" data-drawer="weishu" ' + (sel.includes(t) ? "checked" : "") + '><span class="filter-label block text-center py-2 bg-[#1a1a2a] rounded-lg text-xs">' + t + "</span></label>";
+          return '<div class="dflex">' + row.map(function (t) {
+            return '<label class="dflex-1"><input type="checkbox" class="filter-checkbox hidden" value="' + t + '" data-drawer="weishu" ' + (sel.includes(t) ? "checked" : "") + '><span class="filter-label dbtn dbtn-sm">' + t + "</span></label>";
           }).join("") + "</div>";
         }).join("");
       },
       shuduan: function () {
         const duans = ["1段", "2段", "3段", "4段", "5段", "6段", "7段"];
         const sel = state.selectedFilters.shuduan;
-        return '<div class="flex flex-wrap gap-2">' + duans.map(function (d) {
-          return '<label><input type="checkbox" class="filter-checkbox hidden" value="' + d + '" data-drawer="shuduan" ' + (sel.includes(d) ? "checked" : "") + '><span class="filter-label block py-2 px-4 bg-[#1a1a2a] rounded-lg text-sm">' + d + "</span></label>";
+        return '<div class="dflex-wrap">' + duans.map(function (d) {
+          return '<label><input type="checkbox" class="filter-checkbox hidden" value="' + d + '" data-drawer="shuduan" ' + (sel.includes(d) ? "checked" : "") + '><span class="filter-label dbtn dbtn-md">' + d + "</span></label>";
         }).join("") + "</div>";
       },
       bose: function () {
         const items = [["红波单", "蓝波单", "绿波单"], ["红波双", "蓝波双", "绿波双"]];
         const sel = state.selectedFilters.bose;
         return items.map(function (row) {
-          return '<div class="flex gap-2 mb-2">' + row.map(function (item) {
-            return '<label class="flex-1"><input type="checkbox" class="filter-checkbox hidden" value="' + item + '" data-drawer="bose" ' + (sel.includes(item) ? "checked" : "") + '><span class="filter-label block text-center py-2 bg-[#1a1a2a] rounded-lg text-xs">' + item.replace("波", "") + "</span></label>";
+          return '<div class="dflex">' + row.map(function (item) {
+            return '<label class="dflex-1"><input type="checkbox" class="filter-checkbox hidden" value="' + item + '" data-drawer="bose" ' + (sel.includes(item) ? "checked" : "") + '><span class="filter-label dbtn dbtn-sm">' + item.replace("波", "") + "</span></label>";
           }).join("") + "</div>";
         }).join("");
       },
       wuxing: function () {
         const wx = { 金: "04 05 12 13 26 27 34 35 42 43", 木: "08 09 16 17 24 25 38 39 46 47", 水: "01 14 15 22 23 30 31 44 45", 火: "02 03 10 11 18 19 32 33 40 41 48 49", 土: "06 07 20 21 28 29 36 37" };
         const sel = state.selectedFilters.wuxing;
-        return '<div class="space-y-2">' + Object.entries(wx).map(function (entry) {
+        return '<div class="dspace-y">' + Object.entries(wx).map(function (entry) {
           const k = entry[0], v = entry[1];
-          return '<div class="flex items-center gap-3"><label class="flex items-center gap-2 min-w-0"><input type="checkbox" class="filter-checkbox hidden" value="' + k + '" data-drawer="wuxing" ' + (sel.includes(k) ? "checked" : "") + '><span class="filter-label py-2 px-3 bg-[#1a1a2a] rounded-lg text-center wuxing-btn-fixed">' + k + '</span></label><span class="text-sm text-[#00ffea]/70 truncate flex-1">' + v + "</span></div>";
+          return '<div class="dlabel-row"><label class="ditems-center" style="gap:8px;min-width:0;"><input type="checkbox" class="filter-checkbox hidden" value="' + k + '" data-drawer="wuxing" ' + (sel.includes(k) ? "checked" : "") + '><span class="filter-label dbtn dbtn-fixed">' + k + '</span></label><span class="dlabel-text">' + v + "</span></div>";
         }).join("") + "</div>";
       },
       bandanshuang: function () {
         const items = [["合数单", "小单", "大单"], ["合数双", "小双", "大双"]];
         const sel = state.selectedFilters.bandanshuang;
         return items.map(function (row) {
-          return '<div class="flex gap-2 mb-2">' + row.map(function (item) {
-            return '<label class="flex-1"><input type="checkbox" class="filter-checkbox hidden" value="' + item + '" data-drawer="bandanshuang" ' + (sel.includes(item) ? "checked" : "") + '><span class="filter-label block text-center py-2 bg-[#1a1a2a] rounded-lg text-xs">' + item + "</span></label>";
+          return '<div class="dflex">' + row.map(function (item) {
+            return '<label class="dflex-1"><input type="checkbox" class="filter-checkbox hidden" value="' + item + '" data-drawer="bandanshuang" ' + (sel.includes(item) ? "checked" : "") + '><span class="filter-label dbtn dbtn-sm">' + item + "</span></label>";
           }).join("") + "</div>";
         }).join("");
       },
       heshu: function () {
         const hes = Array.from({ length: 13 }, function (_, i) { return (i + 1) + "合"; });
         const sel = state.selectedFilters.heshu;
-        return '<div class="grid grid-cols-4 gap-2">' + hes.map(function (h) {
-          return '<label><input type="checkbox" class="filter-checkbox hidden" value="' + h + '" data-drawer="heshu" ' + (sel.includes(h) ? "checked" : "") + '><span class="filter-label block text-center py-2 bg-[#1a1a2a] rounded-lg text-xs">' + h + "</span></label>";
+        return '<div class="dgrid-4">' + hes.map(function (h) {
+          return '<label><input type="checkbox" class="filter-checkbox hidden" value="' + h + '" data-drawer="heshu" ' + (sel.includes(h) ? "checked" : "") + '><span class="filter-label dbtn dbtn-sm">' + h + "</span></label>";
         }).join("") + "</div>";
       },
       live: function () {
-        return '<div class="flex flex-col" style="height: calc(90vh - 68px); min-height: 480px;">' +
-          '<div class="flex items-center justify-between mb-2 px-1 flex-wrap gap-2">' +
-          '<span class="text-xs text-gray-400">直连视频流播放 \u00B7 自动切换备选源</span>' +
-          '<a href="https://macaujc.com/open_video2/" target="_blank" rel="noopener noreferrer" class="text-xs bg-[#00ffea]/20 text-[#00ffea] px-3 py-1.5 rounded-lg border border-[#00ffea]/40 hover:bg-[#00ffea]/30 transition-all flex items-center gap-1">' +
-          '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>\u65b0\u7a97\u53e3\u89c2\u770b</a></div>' +
-          '<div class="flex gap-2 mb-3 flex-wrap" id="live-source-btns">' +
-          '<button data-src-idx="0" class="live-src-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-[#00ffea] text-black border border-[#00ffea]">\u6e901\u00B7API\u83b7\u53d6</button>' +
-          '<button data-src-idx="1" class="live-src-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-[#1a1a2a] text-gray-400 border border-[#00ffea]/20">\u6e902\u00B7HLS</button>' +
-          '<button data-src-idx="2" class="live-src-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-[#1a1a2a] text-gray-400 border border-[#00ffea]/20">\u6e903\u00B7FLV</button>' +
+        return '<div class="dflex-col" style="height: calc(90vh - 68px); min-height: 480px;">' +
+          '<div class="dflex-between dmb-2 dpx-1">' +
+          '<span class="dtext-xs dtext-gray">直连视频流播放 · 自动切换备选源</span>' +
+          '<a href="https://macaujc.com/open_video2/" target="_blank" rel="noopener noreferrer" style="font-size:12px; background:rgba(0,255,234,0.2); color:#00ffea; padding:6px 12px; border-radius:8px; border:1px solid rgba(0,255,234,0.4); text-decoration:none; display:inline-flex; align-items:center; gap:4px;">' +
+          '<svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>新窗口观看</a></div>' +
+          '<div class="dflex-wrap dmb-3" id="live-source-btns">' +
+          '<button data-src-idx="0" class="dlive-btn active">源1·API获取</button>' +
+          '<button data-src-idx="1" class="dlive-btn">源2·HLS</button>' +
+          '<button data-src-idx="2" class="dlive-btn">源3·FLV</button>' +
           "</div>" +
-          '<div class="relative flex-1 bg-black rounded-2xl overflow-hidden border border-[#00ffea]/40 shadow-2xl">' +
-          '<video id="live-video" class="w-full h-full" controls autoplay playsinline muted style="background:#000;"></video>' +
-          '<div id="live-loading" class="absolute inset-0 flex flex-col items-center justify-center bg-black z-10">' +
-          '<svg class="animate-spin w-8 h-8 text-[#00ffea] mb-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>' +
-          '<span class="text-sm text-gray-400" id="live-status">\u6b63\u5728\u83b7\u53d6\u76f4\u64ad\u6e90...</span></div>' +
-          '<div id="live-error" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a12] z-20 p-6 text-center">' +
-          '<svg class="w-12 h-12 text-red-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>' +
-          '<p class="text-red-400 font-bold mb-1">\u76f4\u64ad\u6e90\u52a0\u8f7d\u5931\u8d25</p>' +
-          '<p class="text-xs text-gray-500 mb-4">\u6240\u6709\u5907\u9009\u6e90\u5747\u65e0\u6cd5\u8fde\u63a5</p>' +
-          '<a href="https://macaujc.com/open_video2/" target="_blank" rel="noopener noreferrer" class="bg-gradient-to-r from-[#00ffea] to-[#0088ff] text-black font-bold px-6 py-2.5 rounded-xl hover:shadow-[0_0_20px_rgba(0,255,234,0.4)] transition-all flex items-center gap-2 mb-2">' +
-          '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>macaujc.com \u76f4\u64ad</a>' +
-          '<a href="https://momarksix.org/video" target="_blank" rel="noopener noreferrer" class="bg-[#1a1a2a] text-[#00ffea] font-bold px-6 py-2.5 rounded-xl border border-[#00ffea]/30 hover:bg-[#00ffea]/10 transition-all flex items-center gap-2">' +
-          '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>\u5907\u7528\u76f4\u64ad\u7ad9</a></div></div></div>';
+          '<div class="dvideo-box">' +
+          '<video id="live-video" style="width:100%; height:100%; background:#000;" controls autoplay playsinline muted></video>' +
+          '<div id="live-loading" class="doverlay">' +
+          '<svg width="32" height="32" class="animate-spin" style="color:#00ffea; margin-bottom:12px;" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>' +
+          '<span class="dtext-sm dtext-gray" id="live-status">正在获取直播源...</span></div>' +
+          '<div id="live-error" class="dhidden doverlay" style="background:#0a0a12; z-index:20; padding:24px; text-align:center;">' +
+          '<svg width="48" height="48" style="color:#f87171; margin-bottom:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>' +
+          '<p style="color:#f87171; font-weight:bold; margin-bottom:4px;">直播源加载失败</p>' +
+          '<p class="dtext-xs dtext-gray" style="margin-bottom:16px;">所有备选源均无法连接</p>' +
+          '<a href="https://macaujc.com/open_video2/" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#00ffea,#0088ff); color:#000; font-weight:bold; padding:10px 24px; border-radius:12px; text-decoration:none; margin-bottom:8px;">' +
+          '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>macaujc.com 直播</a>' +
+          '<a href="https://momarksix.org/video" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:8px; background:#1a1a2a; color:#00ffea; font-weight:bold; padding:10px 24px; border-radius:12px; border:1px solid rgba(0,255,234,0.3); text-decoration:none;">' +
+          '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>备用直播站</a></div></div></div>';
       },
       history: function () {
         let opts = "";
         const currentYear = new Date().getFullYear();
         for (let y = currentYear; y >= 2020; y--) {
-          opts += '<option value="' + y + '">' + y + "\u5e74</option>";
+          opts += '<option value="' + y + '">' + y + "年</option>";
         }
-        return '<div><select id="historyYear" class="w-full bg-[#1a1a2a] border border-[#00ffea]/30 rounded-lg p-3 text-[#00ffea]"><option value="">\u9009\u62e9\u5e74\u4efd</option>' + opts + "</select>" +
-          '<div id="historyLoading" class="hidden text-center py-4"><svg class="animate-spin w-6 h-6 mx-auto text-[#00ffea]" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>' +
-          '<div id="historyContent" class="mt-3 hide-scrollbar"></div>' +
-          '<div id="historyPagination" class="flex justify-between items-center mt-6 px-1 hidden"><button id="history-prev" class="px-6 py-3 bg-[#1a1a2a] hover:bg-[#00ffea]/10 text-[#00ffea] rounded-2xl flex items-center gap-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed">\u2190 \u4e0a1\u9875</button>' +
-          '<div class="text-center text-sm">\u7b2c <span id="historyPageNum" class="font-bold text-[#00ffea]">1</span> \u9875 / <span id="historyTotalPages" class="text-gray-400">1</span> \u9875</div>' +
-          '<button id="history-next" class="px-6 py-3 bg-[#1a1a2a] hover:bg-[#00ffea]/10 text-[#00ffea] rounded-2xl flex items-center gap-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed">\u4e0b1\u9875 \u2192</button></div></div>';
+        return '<div><select id="historyYear" class="dselect"><option value="">选择年份</option>' + opts + "</select>" +
+          '<div id="historyLoading" class="dhidden dtext-center dpy-4"><svg class="animate-spin" style="width:24px; height:24px; margin:0 auto; color:#00ffea;" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>' +
+          '<div id="historyContent" class="dmt-3 hide-scrollbar"></div>' +
+          '<div id="historyPagination" class="dflex-between dmt-6 dpx-1 dhidden"><button id="history-prev" class="dpage-btn">← 上1页</button>' +
+          '<div class="dtext-sm" style="text-align:center;">第 <span id="historyPageNum" style="font-weight:bold; color:#00ffea;">1</span> 页 / <span id="historyTotalPages" class="dtext-gray">1</span> 页</div>' +
+          '<button id="history-next" class="dpage-btn">下1页 →</button></div></div>';
       }
     },
     open: function (type) {
       if (this.current === type) { this.close(); return; }
       this.current = type;
-      const titles = { shama: "\u6740\u7801", shengxiao: "\u751f\u8096", haomatou: "\u5934\u6570", weishu: "\u5c3e\u6570", shuduan: "\u6570\u6bb5", bose: "\u6ce2\u8272", wuxing: "\u4e94\u884c", bandanshuang: "\u534a\u5355\u53cc", heshu: "\u5408\u6570", live: "\u5f00\u5956\u76f4\u64ad", history: "\u5386\u53f2\u5f00\u5956" };
-      if (DOM.drawer_title) DOM.drawer_title.textContent = titles[type] || "\u7b5b\u9009\u5668";
-      const contentDiv = DOM.drawer_content;
-      if (contentDiv) contentDiv.innerHTML = (this.templates[type] ? this.templates[type]() : "<p>\u6682\u65e0</p>");
+      const titles = { shama: "杀码", shengxiao: "生肖", haomatou: "头数", weishu: "尾数", shuduan: "数段", bose: "波色", wuxing: "五行", bandanshuang: "半单双", heshu: "合数", live: "开奖直播", history: "历史开奖" };
+      const titleText = titles[type] || "筛选器";
+      if (DOM.drawer_title) DOM.drawer_title.textContent = titleText;
+
+      // 关键修复：多重兜底获取 drawer_content
+      let contentDiv = DOM.drawer_content || document.getElementById("drawer-content");
+      if (!contentDiv) {
+        console.error("drawer-content 元素缺失");
+        showToast("抽屉初始化失败，请刷新页面");
+        return;
+      }
+
+      try {
+        const templateFn = this.templates[type];
+        if (templateFn) {
+          contentDiv.innerHTML = templateFn();
+        } else {
+          contentDiv.innerHTML = "<p>暂无内容</p>";
+          console.warn("未找到抽屉模板:", type);
+        }
+      } catch (err) {
+        console.error("Drawer open error:", err);
+        contentDiv.innerHTML = '<p style="color:#f87171;">抽屉加载出错</p>';
+      }
+
       if (DOM.drawer_overlay) {
         DOM.drawer_overlay.classList.remove("hidden");
         setTimeout(function () { DOM.drawer_overlay.classList.remove("opacity-0"); }, 10);
       }
       if (DOM.drawer_container) DOM.drawer_container.classList.add("open");
       this.updateNavState(type);
+
       if (type === "history") {
         setTimeout(function () {
           const sel = document.getElementById("historyYear");
@@ -920,11 +907,10 @@
       this.updateNavState(null);
     },
     bindGlobalDelegation: function () {
-      const content = DOM.drawer_content;
+      const content = DOM.drawer_content || document.getElementById("drawer-content");
       if (!content || content._delegationBound) return;
       content._delegationBound = true;
 
-      // 筛选器 checkbox 变化
       content.addEventListener("change", function (e) {
         const cb = e.target;
         if (!cb.classList.contains("filter-checkbox")) return;
@@ -935,7 +921,6 @@
         }
       });
 
-      // 杀码输入实时同步
       content.addEventListener("input", function (e) {
         const el = e.target;
         if (el.id === "kill-input") {
@@ -944,7 +929,6 @@
         }
       });
 
-      // 按钮点击：分页、直播源切换
       content.addEventListener("click", function (e) {
         if (e.target.id === "history-prev") {
           if (currentHistoryPage > 1) { currentHistoryPage--; renderHistoryPage(); }
@@ -954,18 +938,22 @@
           const totalPages = Math.ceil(currentHistorySorted.length / HISTORY_PAGE_SIZE);
           if (currentHistoryPage < totalPages) { currentHistoryPage++; renderHistoryPage(); }
         }
-        if (e.target.classList.contains("live-src-btn")) {
+        if (e.target.classList.contains("live-src-btn") || e.target.classList.contains("dlive-btn")) {
           const idx = parseInt(e.target.dataset.srcIdx, 10);
           if (!isNaN(idx)) {
             liveSourceIndex = idx;
-            const btns = document.querySelectorAll(".live-src-btn");
+            const btns = document.querySelectorAll(".live-src-btn, .dlive-btn");
             btns.forEach(function (b, i) {
               if (i === idx) {
-                b.classList.remove("bg-[#1a1a2a]", "text-gray-400");
-                b.classList.add("bg-[#00ffea]", "text-black");
+                b.classList.add("active");
+                b.style.background = "#00ffea";
+                b.style.color = "#000";
+                b.style.borderColor = "#00ffea";
               } else {
-                b.classList.remove("bg-[#00ffea]", "text-black");
-                b.classList.add("bg-[#1a1a2a]", "text-gray-400");
+                b.classList.remove("active");
+                b.style.background = "#1a1a2a";
+                b.style.color = "#9ca3af";
+                b.style.borderColor = "rgba(0,255,234,0.2)";
               }
             });
             connectLiveSource(idx);
@@ -973,7 +961,6 @@
         }
       });
 
-      // 年份选择加载历史
       content.addEventListener("change", function (e) {
         if (e.target.id === "historyYear") {
           const year = e.target.value;
@@ -981,7 +968,7 @@
           historyYearLoaded = year;
           const loadDiv = document.getElementById("historyLoading");
           const cont = document.getElementById("historyContent");
-          if (loadDiv) loadDiv.classList.remove("hidden");
+          if (loadDiv) loadDiv.classList.remove("dhidden");
           (async function () {
             try {
               if (historyCache[year]) {
@@ -1002,9 +989,9 @@
             } catch (e) {
               console.error("history fetch error:", e);
               currentHistoryData = [];
-              if (cont) cont.innerHTML = '<div class="text-red-400">\u52a0\u8f7d\u5931\u8d25</div>';
+              if (cont) cont.innerHTML = '<div style="color:#f87171;">加载失败</div>';
             } finally {
-              if (loadDiv) loadDiv.classList.add("hidden");
+              if (loadDiv) loadDiv.classList.add("dhidden");
             }
           })();
         }
@@ -1025,13 +1012,12 @@
     }
   };
 
-  // ======================== 复制功能（增强回退）========================
   function copyResult() {
-    if (!lastAnalysisResult) { showToast("\u6682\u65e0\u5206\u6790\u7ed3\u679c"); return; }
+    if (!lastAnalysisResult) { showToast("暂无分析结果"); return; }
     const sortedFreqMap = lastAnalysisResult.sortedFreqMap;
     let text = "";
     sortedFreqMap.forEach(function (nums, f) {
-      text += f + "\u6b21\uff1a" + nums.map(function (n) { return String(n).padStart(2, "0"); }).join(" ") + "\n";
+      text += f + "次：" + nums.map(function (n) { return String(n).padStart(2, "0"); }).join(" ") + "\n";
     });
     if (!text.trim()) return;
     fallbackCopy(text.trim());
@@ -1042,7 +1028,7 @@
   function fallbackCopy(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(function () {
-        showToast("\u5df2\u590d\u5236");
+        showToast("已复制");
       }).catch(function () {
         execCopy(text);
       });
@@ -1059,26 +1045,25 @@
     ta.select();
     try {
       document.execCommand("copy");
-      showToast("\u5df2\u590d\u5236");
+      showToast("已复制");
     } catch (e) {
-      showToast("\u590d\u5236\u5931\u8d25");
+      showToast("复制失败");
     }
     document.body.removeChild(ta);
   }
   window.copyResult = copyResult;
 
-  // ======================== 直播播放器（超时自动切换 + 防抖）========================
   let currentHls = null;
   let currentFlvPlayer = null;
   let liveSourceIndex = 0;
   let liveSourceTimer = null;
-  let liveSwitchLock = false; // 源切换锁，防止错误风暴
+  let liveSwitchLock = false;
   const LIVE_SOURCE_TIMEOUT = 15000;
 
   const LIVE_SOURCES = [
-    { name: "API\u83b7\u53d6", type: "auto", url: "" },
-    { name: "HLS\u6e901", type: "hls", url: "https://media.macaumarksix.com/live/marksix.m3u8" },
-    { name: "FLV\u6e901", type: "flv", url: "https://media.macaumarksix.com/live/marksix.flv" }
+    { name: "API获取", type: "auto", url: "" },
+    { name: "HLS源1", type: "hls", url: "https://media.macaumarksix.com/live/marksix.m3u8" },
+    { name: "FLV源1", type: "flv", url: "https://media.macaumarksix.com/live/marksix.flv" }
   ];
 
   function clearLiveTimer() {
@@ -1097,15 +1082,14 @@
     if (!video) { liveSwitchLock = false; return; }
 
     destroyLivePlayer();
-    if (loading) loading.classList.remove("hidden");
-    if (error) error.classList.add("hidden");
-    if (status) status.textContent = "\u6b63\u5728\u8fde\u63a5 " + LIVE_SOURCES[idx].name + "...";
+    if (loading) loading.classList.remove("dhidden");
+    if (error) error.classList.add("dhidden");
+    if (status) status.textContent = "正在连接 " + LIVE_SOURCES[idx].name + "...";
 
     const src = LIVE_SOURCES[idx];
 
-    // 15秒超时自动切源
     liveSourceTimer = setTimeout(function () {
-      console.warn("\u76f4\u64ad\u6e90\u52a0\u8f7d\u8d85\u65f6: " + src.name);
+      console.warn("直播源加载超时: " + src.name);
       liveSwitchLock = false;
       tryNextSource();
     }, LIVE_SOURCE_TIMEOUT);
@@ -1162,7 +1146,7 @@
       currentHls.on(Hls.Events.MANIFEST_PARSED, function () {
         clearLiveTimer();
         liveSwitchLock = false;
-        if (loading) loading.classList.add("hidden");
+        if (loading) loading.classList.add("dhidden");
         video.play().catch(function () {});
       });
       currentHls.on(Hls.Events.ERROR, function (_event, data) {
@@ -1180,7 +1164,7 @@
       currentFlvPlayer.on(flvjs.Events.LOADING_COMPLETE, function () {
         clearLiveTimer();
         liveSwitchLock = false;
-        if (loading) loading.classList.add("hidden");
+        if (loading) loading.classList.add("dhidden");
       });
       currentFlvPlayer.on(flvjs.Events.ERROR, function () {
         clearLiveTimer();
@@ -1188,15 +1172,14 @@
         tryNextSource();
       });
       setTimeout(function () {
-        if (loading) loading.classList.add("hidden");
+        if (loading) loading.classList.add("dhidden");
       }, 3000);
     } else {
-      // 浏览器原生支持（Safari 原生 HLS 等）
       video.src = url;
       video.addEventListener("loadedmetadata", function () {
         clearLiveTimer();
         liveSwitchLock = false;
-        if (loading) loading.classList.add("hidden");
+        if (loading) loading.classList.add("dhidden");
       });
       video.addEventListener("error", function () {
         clearLiveTimer();
@@ -1212,14 +1195,18 @@
     destroyLivePlayer();
     if (liveSourceIndex + 1 < LIVE_SOURCES.length) {
       liveSourceIndex++;
-      const btns = document.querySelectorAll(".live-src-btn");
+      const btns = document.querySelectorAll(".live-src-btn, .dlive-btn");
       btns.forEach(function (b, i) {
         if (i === liveSourceIndex) {
-          b.classList.remove("bg-[#1a1a2a]", "text-gray-400");
-          b.classList.add("bg-[#00ffea]", "text-black");
+          b.classList.add("active");
+          b.style.background = "#00ffea";
+          b.style.color = "#000";
+          b.style.borderColor = "#00ffea";
         } else {
-          b.classList.remove("bg-[#00ffea]", "text-black");
-          b.classList.add("bg-[#1a1a2a]", "text-gray-400");
+          b.classList.remove("active");
+          b.style.background = "#1a1a2a";
+          b.style.color = "#9ca3af";
+          b.style.borderColor = "rgba(0,255,234,0.2)";
         }
       });
       connectLiveSource(liveSourceIndex);
@@ -1233,8 +1220,8 @@
     liveSwitchLock = false;
     const loading = document.getElementById("live-loading");
     const error = document.getElementById("live-error");
-    if (loading) loading.classList.add("hidden");
-    if (error) error.classList.remove("hidden");
+    if (loading) loading.classList.add("dhidden");
+    if (error) error.classList.remove("dhidden");
   }
 
   function destroyLivePlayer() {
@@ -1245,9 +1232,7 @@
     if (video) { video.pause(); video.removeAttribute("src"); video.load(); }
   }
 
-  // ======================== 自动刷新控制（每秒检查开奖时段）========================
   function initAutoRefresh() {
-    // 使用 1000ms 轮询，仅在 21:33:20 ~ 21:35:00 且页面可见时刷新
     setInterval(function () {
       if (isCurrentDrawComplete) return;
       const now = new Date();
@@ -1261,7 +1246,6 @@
     }, 1000);
   }
 
-  // ======================== 初始化入口 ========================
   function init() {
     cacheDOM();
     loadState();
@@ -1272,7 +1256,7 @@
 
     if (DOM.exampleBtn) {
       DOM.exampleBtn.addEventListener("click", function () {
-        if (DOM.numbers) DOM.numbers.value = "\u9f99\u86c7\u9a6c 12 25 36 8 17 29 41 5 19 33 47";
+        if (DOM.numbers) DOM.numbers.value = "龙蛇马 12 25 36 8 17 29 41 5 19 33 47";
         runAnalysis();
       });
     }
@@ -1280,7 +1264,7 @@
       DOM.clearBtn.addEventListener("click", function () {
         if (DOM.numbers) DOM.numbers.value = "";
         runAnalysis();
-        showToast("\u5df2\u6e05\u7a7a\u8f93\u5165");
+        showToast("已清空输入");
       });
     }
     if (DOM.copyResultBtn) DOM.copyResultBtn.addEventListener("click", copyResult);
@@ -1296,7 +1280,7 @@
           const killInput = document.getElementById("kill-input");
           if (killInput) killInput.value = "";
           DrawerSystem.close();
-          showToast("\u5df2\u6e05\u7a7a\u6240\u6709\u7b5b\u9009");
+          showToast("已清空所有筛选");
         } else {
           DrawerSystem.open(drawer);
         }
@@ -1313,7 +1297,7 @@
       terminateWorker();
     });
 
-    console.log("%c\u2705 \u795e\u7801\u518d\u73b0 v3.5 \u91cd\u6784\u7248\u5df2\u52a0\u8f7d", "color:#00ffea;font-weight:bold");
+    console.log("%c✅ 神码再现 v3.5.1 抽屉修复版已加载", "color:#00ffea;font-weight:bold");
   }
 
   document.addEventListener("DOMContentLoaded", init);
