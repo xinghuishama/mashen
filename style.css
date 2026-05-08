@@ -1,122 +1,114 @@
-/* ======================== style.css — 神码再现 v3.5.3 完整修复版 ======================== */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
+/* ======================== style.css — 完整修复版 v3.5.3 ======================== */
+* { box-sizing: border-box; margin:0; padding:0; }
 
 body {
-    font-family: 'Orbitron', system-ui, -apple-system, sans-serif;
-    background: radial-gradient(circle at 20% 80%, rgba(0,255,234,0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(255,0,85,0.1) 0%, transparent 50%),
-                linear-gradient(135deg, #050510 0%, #0a0a1a 40%, #151525 100%);
+    font-family: system-ui, -apple-system, sans-serif;
+    background: linear-gradient(135deg, #050510 0%, #0f0f1a 100%);
     color: #e0e0ff;
     min-height: 100vh;
-    padding-bottom: 120px;
+    padding-bottom: 130px;
 }
 
-/* 机甲网格背景 */
+/* 网格背景 */
 .mech-grid::before {
     content: '';
     position: fixed;
     inset: 0;
-    background-image: linear-gradient(rgba(0,255,234,0.06) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(0,255,234,0.06) 1px, transparent 1px);
+    background-image: linear-gradient(rgba(0,255,234,0.05) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(0,255,234,0.05) 1px, transparent 1px);
     background-size: 30px 30px;
     z-index: -1;
-    pointer-events: none;
 }
 
-/* ======================== 主要容器 ======================== */
-.max-w-2xl { max-width: 672px; margin: 0 auto; padding: 16px; }
+/* ======================== Tailwind 常用类模拟 ======================== */
+.max-w-2xl { max-width: 672px; margin: 0 auto; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+.p-4 { padding: 16px; }
+.p-5 { padding: 20px; }
+.mb-6 { margin-bottom: 24px; }
+.mb-4 { margin-bottom: 16px; }
+.mt-4 { margin-top: 16px; }
+.mt-3 { margin-top: 12px; }
+.gap-3 { gap: 12px; }
+.flex { display: flex; }
+.justify-between { justify-content: space-between; }
+.items-center { align-items: center; }
+.text-center { text-align: center; }
+.text-4xl { font-size: 2.25rem; line-height: 2.5rem; }
+.text-xl { font-size: 1.25rem; }
+.text-sm { font-size: 0.875rem; }
+.text-xs { font-size: 0.75rem; }
+.font-bold { font-weight: 700; }
+.font-semibold { font-weight: 600; }
+.text-cyan-400 { color: #22d3ee; }
+.text-gray-400 { color: #9ca3af; }
+.text-amber-400 { color: #fbbf24; }
+.hidden { display: none !important; }
 
 /* 输入框 */
 textarea {
     width: 100%;
     background: #111118;
-    border: 2px solid rgba(0,255,234,0.3);
+    border: 2px solid #22d3ee33;
     border-radius: 16px;
     padding: 16px;
-    color: #fff;
+    color: white;
     font-family: monospace;
-    font-size: 15px;
-    resize: vertical;
-    min-height: 110px;
+    min-height: 120px;
 }
 
 /* 按钮 */
 button {
-    padding: 12px 20px;
-    border-radius: 12px;
-    font-weight: 600;
-    cursor: pointer;
     transition: all 0.2s;
 }
+.bg-gray-800 { background: #1f2937; }
+.bg-gray-800:hover { background: #374151; }
+.bg-cyan-600 { background: #0891b2; }
+.bg-cyan-600:hover { background: #22d3ee; color: black; }
+.bg-orange-500 { background: #f97316; }
+.bg-orange-500:hover { background: #fb923c; }
 
-.btn-secondary {
-    background: #1f1f2e;
-    color: #ccc;
-    border: 1px solid rgba(0,255,234,0.4);
-}
-
-.btn-primary {
-    background: linear-gradient(90deg, #00ffea, #00aaff);
-    color: #000;
-}
-
-/* ======================== 3D 号码球 ======================== */
+/* 号码球 */
 .ball-3d {
-    position: relative;
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
+    width: 38px; height: 38px;
+    border-radius: 9999px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font: 700 13.5px/1 'Orbitron', sans-serif;
-    color: #fff;
-    cursor: pointer;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.6),
-                inset 0 4px 8px rgba(255,255,255,0.4),
-                inset 0 -4px 8px rgba(0,0,0,0.5);
-    overflow: visible;
+    font-weight: 700;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6),
+                inset 0 3px 8px rgba(255,255,255,0.3),
+                inset 0 -3px 8px rgba(0,0,0,0.4);
+    position: relative;
+    margin: 2px;
 }
 
-.ball-red   { background: linear-gradient(135deg, #ff5555, #cc1111); }
-.ball-green { background: linear-gradient(135deg, #44dd66, #11aa22); }
-.ball-blue  { background: linear-gradient(135deg, #5599ff, #2255cc); }
-.ball-gray  { background: #555555; filter: brightness(0.8); }
+.ball-red   { background: linear-gradient(#ef4444, #b91c1c); }
+.ball-green { background: linear-gradient(#22c55e, #15803d); }
+.ball-blue  { background: linear-gradient(#3b82f6, #1e40af); }
+.ball-gray  { background: #6b7280; }
 
 .hit-mark {
     position: absolute;
-    bottom: -2px;
-    right: 3px;
-    font-size: 11px;
+    bottom: -1px; right: 2px;
+    font-size: 10px;
     font-weight: 900;
-    text-shadow: 0 0 4px #000;
 }
-
 .flash-unique {
-    animation: flashPulse 1.1s infinite ease-in-out;
-    box-shadow: 0 0 30px #00ffea !important;
+    animation: flash 1.2s infinite;
 }
+@keyframes flash { 0%,100% { transform:scale(1); } 50% { transform:scale(1.15); } }
 
-@keyframes flashPulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.22); }
-}
-
-/* ======================== 底部导航 ======================== */
+/* 底部导航 */
 .bottom-nav {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: rgba(15,15,35,0.98);
+    bottom: 0; left: 0; right: 0;
+    background: rgba(15,23,42,0.98);
     backdrop-filter: blur(12px);
-    border-top: 1px solid rgba(0,255,234,0.5);
+    border-top: 1px solid #22d3ee44;
     z-index: 1000;
-    padding: 10px 6px 12px;
+    padding: 8px;
 }
 
 .nav-grid {
@@ -130,74 +122,50 @@ button {
 .nav-item {
     padding: 10px 4px;
     text-align: center;
-    font-size: 12.5px;
-    background: #1a1a2a;
+    font-size: 13px;
+    background: #1e2937;
     border-radius: 10px;
-    border: 1px solid rgba(0,255,234,0.25);
-    color: #bbb;
+    border: 1px solid #22d3ee33;
+    color: #cbd5e1;
     cursor: pointer;
 }
 
-.nav-item:hover, .nav-item.active {
-    background: #00ffea;
-    color: #000;
-    border-color: #00ffea;
+.nav-item:hover {
+    background: #22d3ee;
+    color: #0f172a;
 }
 
-/* ======================== 抽屉 ======================== */
+/* 抽屉 */
 .drawer-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.8);
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
     z-index: 1100;
 }
-
 .drawer-mobile {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    background: #0f0f1a;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #0f172a;
     border-top-left-radius: 24px;
     border-top-right-radius: 24px;
     transform: translateY(100%);
-    transition: transform 0.4s cubic-bezier(0.32,0.72,0,1);
+    transition: transform .4s ease;
     z-index: 1200;
-    max-height: 88vh;
-    overflow-y: auto;
+    max-height: 85vh;
 }
+.drawer-mobile.open { transform: translateY(0); }
 
-.drawer-mobile.open {
-    transform: translateY(0);
-}
-
-.drawer-header {
-    padding: 18px 20px;
-    background: #1a1a2a;
-    border-bottom: 1px solid #00ffea33;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-/* Toast */
 .toast {
     position: fixed;
-    bottom: 90px;
+    bottom: 100px;
     left: 50%;
     transform: translateX(-50%);
-    background: #00ffea;
-    color: #000;
-    padding: 14px 28px;
+    background: #22d3ee;
+    color: #0f172a;
+    padding: 12px 24px;
     border-radius: 9999px;
     font-weight: bold;
     z-index: 9999;
-    box-shadow: 0 10px 30px rgba(0,255,234,0.4);
-    transition: all 0.3s;
+    box-shadow: 0 10px 25px rgba(34,211,238,0.4);
 }
 
 /* 其他 */
-.hidden { display: none !important; }
-.text-cyan-400 { color: #00ffea; }
-.text-emerald-400 { color: #34d399; }
+.result-balls-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
