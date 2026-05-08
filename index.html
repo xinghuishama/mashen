@@ -1,20 +1,19 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+<!DOCTYPE html><html lang="zh-CN"><head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
 <!-- WebView 兼容：禁止缓存问题，确保实时加载 -->
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
 <title>神码再现 v3.5 · 工程级安全版</title>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.loli.net/css2?family=Orbitron:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/flv.js@1.6.2/dist/flv.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.0/dist/hls.min.js"></script>
-<link rel="stylesheet" href="style.css">
-</head>
+<script src="https://cdn.jsdmirror.com/npm/flv.js@1.6.2/dist/flv.min.js"></script>
+<script src="https://cdn.jsdmirror.com/npm/hls.js@1.5.0/dist/hls.min.js"></script>
+<link rel="stylesheet" href="style.css"/>
+<script src="https://www.kimi.com/sdk-seed.js" defer=""></script></head>
 <body class="mech-grid text-gray-300 overflow-x-hidden">
 <main class="relative z-10 max-w-4xl mx-auto p-3">
   <!-- 顶部标题区 -->
@@ -35,10 +34,10 @@
     </div>
     <div class="flex gap-2 mt-4">
       <button id="exampleBtn" class="flex-1 bg-transparent border border-[#00ffea]/50 text-[#00ffea] py-2 px-4 rounded-lg text-sm font-semibold hover:bg-[#00ffea]/10 transition-all active:scale-95 flex items-center justify-center gap-2">
-        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><path d="M13 3H3v2h10V3zm0 4H3v2h10V7zm0 4H3v2h10v-2z"/></svg>示例
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><path d="M13 3H3v2h10V3zm0 4H3v2h10V7zm0 4H3v2h10v-2z"></path></svg>示例
       </button>
       <button id="clearBtn" class="flex-1 bg-transparent border border-[#ff0055]/50 text-[#ff0055] py-2 px-4 rounded-lg text-sm font-semibold hover:bg-[#ff0055]/10 transition-all active:scale-95 flex items-center justify-center gap-2">
-        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3 10.5L10.5 12 8 9.5 5.5 12 5 10.5 7.5 8 5 5.5 5.5 4 8 6.5 10.5 4l.5 1.5L8.5 8z"/></svg>清除输入
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3 10.5L10.5 12 8 9.5 5.5 12 5 10.5 7.5 8 5 5.5 5.5 4 8 6.5 10.5 4l.5 1.5L8.5 8z"></path></svg>清除输入
       </button>
     </div>
   </section>
@@ -48,12 +47,12 @@
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-lg font-bold bg-gradient-to-r from-[#00ffea] to-[#ff0055] bg-clip-text text-transparent">分析结果</h2>
       <button id="copyResultBtn" class="bg-gradient-to-r from-[#00ff88]/80 to-emerald-600/80 text-black py-2 px-4 rounded-lg text-sm font-bold hover:shadow-[0_0_20px_rgba(0,255,136,0.6)] transition-all active:scale-95 flex items-center gap-2">
-        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><path d="M4 2v12h8v2H2V2h2zm10 0v12h2V2h-2zm-2 0H6v12h6V2z"/></svg>复制
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><path d="M4 2v12h8v2H2V2h2zm10 0v12h2V2h-2zm-2 0H6v12h6V2z"></path></svg>复制
       </button>
     </div>
     <div id="result" class="min-h-[200px]">
       <div class="flex flex-col items-center justify-center py-12 text-gray-500">
-        <svg class="w-20 h-20 mb-4 opacity-50" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" stroke="#00ffea" stroke-width="2" fill="none" stroke-dasharray="5,5"/><path d="M30 50l15 15 25-30" stroke="#00ffea" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+        <svg class="w-20 h-20 mb-4 opacity-50" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" stroke="#00ffea" stroke-width="2" fill="none" stroke-dasharray="5,5"></circle><path d="M30 50l15 15 25-30" stroke="#00ffea" stroke-width="3" fill="none" stroke-linecap="round"></path></svg>
         <p>输入号码启动分析</p>
       </div>
     </div>
@@ -72,7 +71,7 @@
     <div class="border-t border-gray-700/50 my-4"></div>
     <div id="lotteryBalls" class="flex justify-center flex-wrap gap-1"></div>
     <button id="refreshLotteryBtn" class="refresh-btn-orange">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>刷新数据
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>刷新数据
     </button>
   </section>
 
@@ -101,7 +100,7 @@
   <div class="sticky top-0 bg-[#0a0a12] border-b border-[#00ffea]/30 p-2 flex justify-between items-center z-10">
     <h3 id="drawer-title" class="text-[#00ffea] font-bold text-lg">筛选器</h3>
     <button id="drawer-close" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#00ffea]/20 text-[#00ffea] transition-all">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
     </button>
   </div>
   <div id="drawer-content" class="p-4 space-y-4 pb-20 bg-[#0a0a12]"></div>
@@ -112,5 +111,6 @@
 
 <script src="data.js"></script>
 <script src="app.js"></script>
-</body>
-</html>
+
+
+</body></html>
