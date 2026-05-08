@@ -25,75 +25,213 @@ body {
   z-index: -1;
 }
 
+/* ======================== 抽屉内容布局类（完全不依赖 Tailwind CDN） ======================== */
+.dgrid-6 { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+.dgrid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.dgrid-5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+
+.dflex { display: flex; gap: 8px; margin-bottom: 8px; }
+.dflex-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.dflex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.dflex-center { display: flex; align-items: center; justify-content: center; }
+.dflex-col { display: flex; flex-direction: column; }
+.dflex-1 { flex: 1 1 0%; }
+.ditems-center { display: flex; align-items: center; }
+.dlabel-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+
+.dspace-y > * + * { margin-top: 8px; }
+.dmb-2 { margin-bottom: 8px; }
+.dmb-3 { margin-bottom: 12px; }
+.dmt-3 { margin-top: 12px; }
+.dmt-6 { margin-top: 24px; }
+.dpx-1 { padding-left: 4px; padding-right: 4px; }
+.dpy-4 { padding-top: 16px; padding-bottom: 16px; }
+.dpb-20 { padding-bottom: 80px; }
+
+.dbtn {
+  display: block;
+  text-align: center;
+  padding: 8px 0;
+  background: #1a1a2a;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #9ca3af;
+  border: 1px solid rgba(0, 255, 234, 0.2);
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.dbtn-sm { padding: 6px 0; font-size: 12px; }
+.dbtn-md { padding: 8px 16px; font-size: 14px; }
+.dbtn-fixed { width: 3rem; min-width: 3rem; flex: none; padding: 8px 0; }
+
+.dinput {
+  width: 100%;
+  background: #1a1a2a;
+  border: 1px solid rgba(0, 255, 234, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  color: #00ffea;
+  font-family: monospace;
+  font-size: 14px;
+  resize: vertical;
+  outline: none;
+}
+
+.dselect {
+  width: 100%;
+  background: #1a1a2a;
+  border: 1px solid rgba(0, 255, 234, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  color: #00ffea;
+  font-size: 16px;
+  outline: none;
+}
+
+.dtext-xs { font-size: 12px; }
+.dtext-sm { font-size: 14px; }
+.dtext-gray { color: #9ca3af; }
+.dtext-cyan { color: #00ffea; }
+.dtext-cyan-dim { color: rgba(0, 255, 234, 0.7); }
+.dtruncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.dpage-btn {
+  padding: 12px 24px;
+  background: #1a1a2a;
+  color: #00ffea;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.dpage-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.dpage-btn:hover:not(:disabled) { background: rgba(0, 255, 234, 0.1); }
+
+.dlive-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid rgba(0, 255, 234, 0.2);
+  cursor: pointer;
+  background: #1a1a2a;
+  color: #9ca3af;
+}
+.dlive-btn.active {
+  background: #00ffea;
+  color: #000;
+  border-color: #00ffea;
+}
+
+.dvideo-box {
+  position: relative;
+  flex: 1;
+  background: #000;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 255, 234, 0.4);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+}
+
+.doverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.dhidden { display: none !important; }
+
 /* ======================== 3D 号码球（分析结果区） ======================== */
 .ball-3d {
   position: relative;
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  font-weight: bold;
-  color: white;
+  font: 700 14px/1 'Orbitron', sans-serif;
+  color: #fff;
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3), inset 0 -2px 4px rgba(0,0,0,0.2);
-  transition: filter 0.2s ease, transform 0.1s;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
-  overflow: hidden;
+  overflow: visiable;
+  transition: transform .25s cubic-bezier(.175, .885, .32, 1.275);
+  transform: translateZ(0);
+  background:
+    radial-gradient(circle at 35% 25%, rgba(255,255,255,.95) 0%, transparent 25%),
+    radial-gradient(circle at 50% 30%, rgba(255,255,255,.4) 0%, transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(0,0,0,.4) 0%, transparent 60%),
+    linear-gradient(135deg, #4488ff 0%, #2244cc 60%, #112288 100%);
+  border: none;
+  box-shadow:
+    0 4px 8px rgba(0,0,0,.5),
+    0 8px 16px rgba(0,0,0,.3),
+    inset 0 -3px 8px rgba(0,0,0,.3),
+    inset 0 3px 8px rgba(255,255,255,.4);
 }
-/* 顶部高光：减小面积，提升数字可读性 */
 .ball-3d::after {
   content: '';
   position: absolute;
-  top: 12%;
-  left: 14%;
-  width: 22%;
-  height: 14%;
-  background: radial-gradient(ellipse at center, rgba(255,255,255,0.75) 0%, transparent 70%);
+  z-index: -1;
+  left: 10%;
+  top: 10%;
+  width: 80%;
+  height: 80%;
   border-radius: 50%;
+  background: rgba(0,0,0,.35);
+  filter: blur(8px);
+  transform: translate(6px, 6px);
   pointer-events: none;
 }
-.ball-3d:active { transform: scale(0.92); }
+.ball-3d:active { transform: scale(0.92) translateZ(0); }
 
-/* 红球3D：165deg 统一渐变方向 */
 .ball-red {
   background:
-    radial-gradient(circle at 28% 20%, rgba(255,255,255,0.3) 0%, transparent 18%),
-    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 40%),
-    radial-gradient(circle at 50% 100%, rgba(0,0,0,0.3) 0%, transparent 55%),
-    linear-gradient(165deg, #ff3333 0%, #cc0000 60%, #990000 100%);
+    radial-gradient(circle at 65% 25%, rgba(255,255,255,.8) 0%, transparent 35%),
+    radial-gradient(circle at 50% 30%, rgba(255,255,255,.2) 0%, transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(0,0,0,.4) 0%, transparent 60%),
+    linear-gradient(135deg, #ff3333 0%, #cc0000 60%, #990000 100%);
 }
-
-/* 绿球3D */
 .ball-green {
   background:
-    radial-gradient(circle at 28% 20%, rgba(255,255,255,0.3) 0%, transparent 18%),
-    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 40%),
-    radial-gradient(circle at 50% 100%, rgba(0,0,0,0.3) 0%, transparent 55%),
-    linear-gradient(165deg, #33cc33 0%, #118811 60%, #005500 100%);
+    radial-gradient(circle at 65% 25%, rgba(255,255,255,.8) 0%, transparent 35%),
+    radial-gradient(circle at 50% 30%, rgba(255,255,255,.2) 0%, transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(0,0,0,.4) 0%, transparent 60%),
+    linear-gradient(135deg, #33cc33 0%, #118811 60%, #005500 100%);
 }
-
-/* 蓝球3D：与红绿球同方向同渐变程度 */
 .ball-blue {
   background:
-    radial-gradient(circle at 28% 20%, rgba(255,255,255,0.3) 0%, transparent 18%),
-    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 40%),
-    radial-gradient(circle at 50% 100%, rgba(0,0,0,0.3) 0%, transparent 55%),
-    linear-gradient(165deg, #4488ff 0%, #2244cc 60%, #112288 100%);
+    radial-gradient(circle at 65% 25%, rgba(255,255,255,.8) 0%, transparent 35%),
+    radial-gradient(circle at 50% 30%, rgba(255,255,255,.2) 0%, transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(0,0,0,.4) 0%, transparent 60%),
+    linear-gradient(135deg, #4488ff 0%, #2244cc 60%, #112288 100%);
 }
 
-/* 已被命中（斩杀）的号码变为灰色 */
 .ball-gray {
   background: #666 !important;
-  box-shadow: 0 0 4px rgba(0,0,0,0.5);
+  box-shadow: 0 0 4px rgba(0,0,0,0.5) !important;
   filter: none !important;
 }
+.ball-gray::after { display: none; }
 
-/* 命中次数角标 */
 .hit-mark {
   position: absolute;
   bottom: 1px;
@@ -113,8 +251,6 @@ body {
   line-height: 1;
   pointer-events: none;
 }
-
-/* 杀码专属红叉角标 */
 .hit-mark.cross {
   color: #ff3333;
   font-size: 14px;
@@ -123,17 +259,14 @@ body {
   text-shadow: 0 0 2px rgba(255,255,255,0.5), 0 0 4px rgba(0,0,0,0.8);
 }
 
-/* 分析结果区小球尺寸微调（高光进一步缩小，防止遮挡数字） */
 #result .ball-3d {
   width: 32px;
   height: 32px;
   font-size: 12px;
 }
 #result .ball-3d::after {
-  width: 25%;   /* 缩小高光宽度 */
-  height: 15%;  /* 缩小高光高度 */
-  top: 14%;
-  left: 17%;
+  filter: blur(6px);
+  transform: translate(4px, 4px);
 }
 #result .ball-3d .hit-mark {
   font-size: 9px;
@@ -146,7 +279,6 @@ body {
   right: 1px;
 }
 
-/* 独苗高亮脉冲动画 */
 @keyframes flashPulse {
   0%, 100% { opacity: 1; filter: brightness(1) saturate(1); transform: scale(1); }
   50% { opacity: 0.7; filter: brightness(1.3) saturate(1.2); transform: scale(1.15); }
@@ -157,7 +289,6 @@ body {
   z-index: 10;
 }
 
-/* 斩杀线（平均频次分割线） */
 .kill-line::before, .kill-line::after {
   content: '\2702';
   position: absolute;
@@ -181,7 +312,6 @@ body {
   transform: translateY(0);
 }
 
-/* 底部导航栏 */
 .bottom-nav {
   position: fixed;
   bottom: 0;
@@ -201,22 +331,25 @@ body {
   -webkit-user-select: none;
 }
 
-/* 筛选器选中态高亮 */
 .filter-checkbox:checked + .filter-label {
   background: linear-gradient(135deg, rgba(0,255,234,0.9) 0%, rgba(0,102,255,0.9) 100%) !important;
   color: #000 !important;
   box-shadow: 0 0 10px rgba(0,255,234,0.4) !important;
   border-color: transparent !important;
 }
+.filter-checkbox:checked + .dbtn {
+  background: linear-gradient(135deg, rgba(0,255,234,0.9) 0%, rgba(0,102,255,0.9) 100%) !important;
+  color: #000 !important;
+  box-shadow: 0 0 10px rgba(0,255,234,0.4) !important;
+  border-color: transparent !important;
+}
 
-/* 隐藏滚动条 */
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-/* 开奖卡片容器 */
 .lottery-card {
   background: rgba(30, 35, 50, 0.65);
   border-radius: 24px;
@@ -225,7 +358,6 @@ body {
   backdrop-filter: blur(12px);
 }
 
-/* 刷新按钮 */
 .refresh-btn-orange {
   background: linear-gradient(135deg, #fbbf24 0%, #f97316 100%);
   color: #1a1a2e;
@@ -244,14 +376,13 @@ body {
 }
 .refresh-btn-orange:active { transform: scale(0.96); }
 
-/* 五行按钮固定宽度，防止被挤压 */
 .wuxing-btn-fixed {
   width: 3rem !important;
   min-width: 3rem !important;
   flex: none !important;
 }
 
-/* ======================== 真实开奖风格蛋形球（顶部开奖区） ======================== */
+/* ======================== 真实开奖风格蛋形球 ======================== */
 .result-balls-row {
   display: flex;
   align-items: center;
@@ -288,7 +419,6 @@ body {
   opacity: 0;
   transform: scale(0);
 }
-/* 蛋形球顶部高光 */
 .result-ball::after {
   content: '';
   position: absolute;
@@ -300,19 +430,16 @@ body {
   border-radius: 50%;
   pointer-events: none;
 }
-/* 红球蛋形 */
 .result-ball-red {
   background:
     radial-gradient(ellipse at 50% 25%, rgba(255,255,255,0.22) 0%, transparent 50%),
     linear-gradient(180deg, #ff5555 0%, #dd1111 45%, #aa0000 100%);
 }
-/* 绿球蛋形 */
 .result-ball-green {
   background:
     radial-gradient(ellipse at 50% 25%, rgba(255,255,255,0.22) 0%, transparent 50%),
     linear-gradient(180deg, #44dd44 0%, #229922 45%, #116611 100%);
 }
-/* 蓝球蛋形 */
 .result-ball-blue {
   background:
     radial-gradient(ellipse at 50% 25%, rgba(255,255,255,0.22) 0%, transparent 50%),
@@ -326,7 +453,6 @@ body {
   align-self: center;
   padding-bottom: 16px;
 }
-/* 球内底部标签 */
 .result-ball-meta {
   position: absolute;
   bottom: 7px;
@@ -339,14 +465,12 @@ body {
   white-space: nowrap;
   letter-spacing: 0.2px;
 }
-/* 五行文字颜色 */
 .wx-gold { color: #FFD700; }
 .wx-wood { color: #32CD32; }
 .wx-water { color: #00BFFF; }
 .wx-fire { color: #FF4444; }
 .wx-earth { color: #CD853F; }
 
-/* 大球弹出动画 */
 @keyframes ballAppear {
   0% { transform: scale(0) rotate(-180deg); opacity: 0; }
   60% { transform: scale(1.15) rotate(10deg); opacity: 1; }
@@ -354,7 +478,6 @@ body {
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
 
-/* 蛋形球小屏适配 */
 @media (max-width: 420px) {
   .result-ball { width: 42px; height: 56px; font-size: 15px; padding-top: 10px; }
   .result-balls-row { gap: 4px; }
@@ -368,7 +491,7 @@ body {
   .result-ball-meta { font-size: 9px; bottom: 6px; }
 }
 
-/* ======================== 历史记录卡片（底部抽屉） ======================== */
+/* ======================== 历史记录卡片 ======================== */
 .history-ball-card {
   display: flex;
   flex-direction: column;
@@ -417,7 +540,7 @@ body {
   border-radius: 10px;
   padding: 10px;
   margin-bottom: 8px;
-  min-width: 0; /* 关键：防止 flex 子项撑开容器导致溢出 */
+  min-width: 0;
   overflow: hidden;
 }
 .history-item-header {
@@ -446,7 +569,6 @@ body {
   overflow-y: auto;
 }
 
-/* 历史记录小屏适配：进一步压缩防止溢出 */
 @media (max-width: 420px) {
   .history-ball-card { min-width: 36px; }
   .history-ball-number { font-size: 15px; padding: 4px 1px; }
