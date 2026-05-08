@@ -1,12 +1,20 @@
+
 // ======================== app.js — 主线程核心逻辑 v3.5 ========================
 // 设计目标：APK WebView 100% 兼容 · Worker 全量卸载 · 离线缓存 · 无 inline JS · 工程级安全
 (function () {
   "use strict";
 
-  // ======================== 配置与数据引用 ========================
+  // ======================== 配置与数据引用（含 fallback）========================
+  // 优先使用 data.js 加载的数据，失败时使用内置 fallback
+  const SHENGXIAO_FB = {
+    鼠:[7,19,31,43],   牛:[6,18,30,42],   虎:[5,17,29,41],
+    兔:[4,16,28,40],   龙:[3,15,27,39],   蛇:[2,14,26,38],
+    马:[1,13,25,37,49],羊:[12,24,36,48],  猴:[11,23,35,47],
+    鸡:[10,22,34,46],  狗:[9,21,33,45],   猪:[8,20,32,44]
+  };
   const DATA = window.APP_DATA || {};
   const MAX_NUMBERS = DATA.MAX_NUMBERS || 5000;
-  const SHENGXIAO = DATA.SHENGXIAO || {};
+  const SHENGXIAO = DATA.SHENGXIAO || SHENGXIAO_FB;
   const CATEGORIES = DATA.CATEGORIES || {};
   const DUAN = DATA.DUAN || {};
   const numProps = DATA.numProps || [];
@@ -66,9 +74,12 @@
     Object.keys(state.selectedFilters).forEach(function (k) { state.selectedFilters[k] = []; });
     notify();
   }
-  // 返回 Set（O(1) has）替代数组 includes（O(n)），热点路径性能优化
+  // 返回数组（供 Worker 使用），同时维护 Set 缓存供热点查询
+  let _filterSetCache = null;
   function getFilterSet() {
-    return new Set(Object.values(state.selectedFilters).flat());
+    const arr = Object.values(state.selectedFilters).flat();
+    _filterSetCache = new Set(arr);
+    return arr;
   }
 
   // ======================== localStorage 持久化 ========================
