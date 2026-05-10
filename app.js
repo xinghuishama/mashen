@@ -113,37 +113,31 @@
     setTimeout(function () { t.classList.add("translate-y-20", "opacity-0"); }, 2000);
   }
 
-function parseInputCount(input) {
-  if (!input || !input.trim()) return { nums: [], truncated: false, rawCount: 0 };
-  let cleaned = input.replace(/《.*?》/g, " ")
-                     .replace(/[^0-9鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, " ")
-                     .replace(/([鼠牛虎兔龙蛇马羊猴鸡狗猪])/g, " $1 ");
-  const tokens = cleaned.split(" ").filter(t => t.length > 0);
-  if (!tokens.length) return { nums: [], truncated: false, rawCount: 0 };
+  function parseInputCount(input) {
+    if (!input || !input.trim()) return { nums: [], truncated: false };
+    let cleaned = input.replace(/《.*?》/g, " ").replace(/[^0-9鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, " ")
+                       .replace(/([鼠牛虎兔龙蛇马羊猴鸡狗猪])/g, " $1 ");
+    const tokens = cleaned.split(" ").filter(function (t) { return t.length > 0; });
+    if (!tokens.length) return { nums: [], truncated: false };
 
-  let results = [];
-  for (let i = 0; i < tokens.length; i++) {
-    const token = tokens[i];
-    if (SHENGXIAO[token]) {
-      results.push(...SHENGXIAO[token]);
-    } else if (/^\d+$/.test(token)) {
-      const n = Number(token);
-      if (Number.isInteger(n) && n >= 1 && n <= 49) results.push(n);
+    let results = [];
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      if (SHENGXIAO[token]) {
+        results.push.apply(results, SHENGXIAO[token]);
+      } else if (/^\d+$/.test(token)) {
+        const n = Number(token);
+        if (Number.isInteger(n) && n >= 1 && n <= 49) results.push(n);
+      }
     }
+    const rawLength = results.length;          // ← 新增
+results = Array.from(new Set(results));
+
+    let truncated = false;
+    if (results.length > MAX_NUMBERS) { results = results.slice(0, MAX_NUMBERS); truncated = true; }
+    return { nums: results, rawLength: rawLength, truncated: truncated };
+
   }
-
-  // 分析引擎仍然使用去重后的 nums
-  const uniqueResults = Array.from(new Set(results));
-
-  let truncated = false;
-  if (results.length > MAX_NUMBERS) {
-    results = results.slice(0, MAX_NUMBERS);
-    truncated = true;
-  }
-
-  // rawCount = 原始输入数量（包含重复）
-  return { nums: uniqueResults, truncated: truncated, rawCount: results.length };
-}
 
   let cachedMatchFuncs = null;
   let lastFilterSignature = "";
@@ -464,7 +458,9 @@ function parseInputCount(input) {
     debounceTimer = setTimeout(function () {
       try {
         const input = DOM.numbers ? DOM.numbers.value : "";
-        if (DOM.charCount) DOM.charCount.textContent = parsed.rawCount;
+        const parsed = parseInputCount(input);
+        if (DOM.charCount) DOM.charCount.textContent = parsed.rawLength;   // ← 改这里
+
         if (DOM.numberWarn) {
           if (parsed.truncated) {
             DOM.numberWarn.classList.remove("hidden");
@@ -1340,4 +1336,96 @@ function parseInputCount(input) {
   }
 
   document.addEventListener("DOMContentLoaded", init);
+  /* ======================== 彩色微尘粒子背景 ======================== */
+  (function initParticles() {
+    const canvas = document.createElement("canvas");
+    canvas.id = "particle-bg";
+    document.body.insertBefore(canvas, document.body.firstChild);
+
+    const ctx = canvas.getContext("2d", { alpha: true });
+    let W, H, dpr;
+    let particles = [];
+    let frame = 0;
+
+    const isLowEnd = navigator.hardwareConcurrency <= 4 ||
+                     (navigator.deviceMemory && navigator.deviceMemory <= 4);
+    const MAX_COUNT = isLowEnd ? 40 : 80;
+    const SPAWN_EVERY = isLowEnd ? 4 : 2;
+
+    const COLORS = [
+      "#ff3366", "#33cc66", "#3366ff", "#aa33ff",
+      "#00ffea", "#ff66cc", "#ff9933", "#ffea00"
+    ];
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width  = W * dpr;
+      canvas.height = H * dpr;
+      canvas.style.width  = W + "px";
+      canvas.style.height = H + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function rand(a, b) { return Math.random() * (b - a) + a; }
+
+    class Dot {
+      constructor() { this.reset(true); }
+      reset(initial) {
+        this.x = rand(0, W);
+        this.y = initial ? rand(0, H) : H + rand(5, 40);
+        this.r = rand(1.2, 3.2);
+        this.speedY = rand(0.2, 0.9);
+        this.speedX = rand(-0.15, 0.15);
+        this.alpha = rand(0.25, 0.7);
+        this.fade = rand(0.996, 0.999);
+        this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+        this.wobble = rand(0, Math.PI * 2);
+        this.wobbleSpeed = rand(0.01, 0.03);
+      }
+      update() {
+        this.y -= this.speedY;
+        this.x += this.speedX + Math.sin(this.wobble) * 0.15;
+        this.wobble += this.wobbleSpeed;
+        this.alpha *= this.fade;
+        if (this.y < -5 || this.alpha < 0.05) this.reset(false);
+      }
+      draw(c) {
+        c.globalAlpha = this.alpha;
+        c.fillStyle = this.color;
+        c.beginPath();
+        c.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+        c.fill();
+      }
+    }
+
+    function initDots() {
+      particles = [];
+      for (let i = 0; i < MAX_COUNT; i++) particles.push(new Dot());
+    }
+
+    let last = 0;
+    function loop(ts) {
+      requestAnimationFrame(loop);
+      if (isLowEnd && ts - last < 33) return;
+      last = ts;
+      ctx.clearRect(0, 0, W, H);
+      frame++;
+      if (frame % SPAWN_EVERY === 0 && particles.length < MAX_COUNT) {
+        particles.push(new Dot());
+      }
+      for (let i = 0; i < particles.length; i++) {
+        particles[i].update();
+        particles[i].draw(ctx);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    resize();
+    initDots();
+    requestAnimationFrame(loop);
+    window.addEventListener("resize", function() { resize(); initDots(); });
+  })();
+
 })();

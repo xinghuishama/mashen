@@ -702,3 +702,11 @@ body {
 .ball-3d .hit-mark {
   z-index: 5;
 }
+/* ======================== 彩色微尘粒子背景 ======================== */
+#particle-bg {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
