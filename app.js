@@ -113,28 +113,37 @@
     setTimeout(function () { t.classList.add("translate-y-20", "opacity-0"); }, 2000);
   }
 
-  function parseInputCount(input) {
-    if (!input || !input.trim()) return { nums: [], truncated: false };
-    let cleaned = input.replace(/《.*?》/g, " ").replace(/[^0-9鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, " ")
-                       .replace(/([鼠牛虎兔龙蛇马羊猴鸡狗猪])/g, " $1 ");
-    const tokens = cleaned.split(" ").filter(function (t) { return t.length > 0; });
-    if (!tokens.length) return { nums: [], truncated: false };
+function parseInputCount(input) {
+  if (!input || !input.trim()) return { nums: [], truncated: false, rawCount: 0 };
+  let cleaned = input.replace(/《.*?》/g, " ")
+                     .replace(/[^0-9鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, " ")
+                     .replace(/([鼠牛虎兔龙蛇马羊猴鸡狗猪])/g, " $1 ");
+  const tokens = cleaned.split(" ").filter(t => t.length > 0);
+  if (!tokens.length) return { nums: [], truncated: false, rawCount: 0 };
 
-    let results = [];
-    for (let i = 0; i < tokens.length; i++) {
-      const token = tokens[i];
-      if (SHENGXIAO[token]) {
-        results.push.apply(results, SHENGXIAO[token]);
-      } else if (/^\d+$/.test(token)) {
-        const n = Number(token);
-        if (Number.isInteger(n) && n >= 1 && n <= 49) results.push(n);
-      }
+  let results = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (SHENGXIAO[token]) {
+      results.push(...SHENGXIAO[token]);
+    } else if (/^\d+$/.test(token)) {
+      const n = Number(token);
+      if (Number.isInteger(n) && n >= 1 && n <= 49) results.push(n);
     }
-    results = Array.from(new Set(results));
-    let truncated = false;
-    if (results.length > MAX_NUMBERS) { results = results.slice(0, MAX_NUMBERS); truncated = true; }
-    return { nums: results, truncated: truncated };
   }
+
+  // 分析引擎仍然使用去重后的 nums
+  const uniqueResults = Array.from(new Set(results));
+
+  let truncated = false;
+  if (results.length > MAX_NUMBERS) {
+    results = results.slice(0, MAX_NUMBERS);
+    truncated = true;
+  }
+
+  // rawCount = 原始输入数量（包含重复）
+  return { nums: uniqueResults, truncated: truncated, rawCount: results.length };
+}
 
   let cachedMatchFuncs = null;
   let lastFilterSignature = "";
@@ -455,8 +464,7 @@
     debounceTimer = setTimeout(function () {
       try {
         const input = DOM.numbers ? DOM.numbers.value : "";
-        const parsed = parseInputCount(input);
-        if (DOM.charCount) DOM.charCount.textContent = parsed.nums.length;
+        if (DOM.charCount) DOM.charCount.textContent = parsed.rawCount;
         if (DOM.numberWarn) {
           if (parsed.truncated) {
             DOM.numberWarn.classList.remove("hidden");
