@@ -1,4 +1,4 @@
-// ======================== worker.js — 独立 Worker 分析引擎 ========================
+// ======================== worker.js — 独立 Worker 分析引擎 v3.5.4 ========================
 // 职责：接收原始输入与筛选条件，返回频次统计、命中次数、原始频次
 // 优化点：匹配函数缓存、轻量级签名、rawCount 回传、主线程数据优先
 (function () {
@@ -10,7 +10,7 @@
   const SHENGXIAO = {
     鼠: [7, 19, 31, 43],   牛: [6, 18, 30, 42],   虎: [5, 17, 29, 41],
     兔: [4, 16, 28, 40],   龙: [3, 15, 27, 39],   蛇: [2, 14, 26, 38],
-    马: [1, 13, 25, 37, 49], 羊: [12, 24, 36, 48],  猴: [11, 23, 35, 47],
+    马: [1, 13, 25, 37, 49],  羊: [12, 24, 36, 48],  猴: [11, 23, 35, 47],
     鸡: [10, 22, 34, 46],  狗: [9, 21, 33, 45],   猪: [8, 20, 32, 44]
   };
   const CATEGORIES = {
@@ -57,10 +57,9 @@
   }
   buildNumProps();
 
-  // 输入解析：提取号码与生肖，去重，截断至 MAX_NUMBERS
+  // 输入解析：提取号码与生肖，截断至 MAX_NUMBERS（保留重复，与主线程一致）
   function parseInputWorker(input) {
     if (!input || !input.trim()) return [];
-    // 先移除《》括号内容，再保留数字与生肖汉字
     let cleaned = input.replace(/《.*?》/g, " ").replace(/[^0-9鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, " ")
                        .replace(/([鼠牛虎兔龙蛇马羊猴鸡狗猪])/g, " $1 ");
     const tokens = cleaned.split(" ").filter(function (t) { return t.length > 0; });
@@ -128,7 +127,7 @@
   function computeHitCounts(killNums, filters) {
     const hits = new Uint8Array(50);
     const killSet = new Set(killNums);
-    const sig = filters.join("\x00"); // 轻量级签名，条件含中文也不怕
+    const sig = filters.join("\x00");
 
     if (!cachedFuncs || sig !== lastFiltersSignature) {
       cachedFuncs = filters.map(buildMatchFunc);
@@ -159,7 +158,7 @@
       const killNums = e.data.killNums || [];
       const filters = e.data.filters || [];
 
-      // 解析输入并统计原始频次
+      // 解析输入并统计原始频次（保留重复）
       const nums = parseInputWorker(input);
       const rawCount = new Uint16Array(50);
       for (let i = 0; i < nums.length; i++) {
@@ -187,7 +186,7 @@
         adjustedTotal: adjustedTotal,
         unique: unique,
         hitCounts: Array.from(hitCounts),
-        rawCount: Array.from(rawCount) // 新增：回传原始频次，支持0次统计
+        rawCount: Array.from(rawCount) // 回传原始频次，支持0次统计
       });
     } catch (err) {
       // Worker 内部错误不应抛到主线程导致崩溃，转为错误消息

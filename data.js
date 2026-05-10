@@ -1,4 +1,4 @@
-// ======================== data.js — 静态数据与号码属性预计算 ========================
+// ======================== data.js — 静态数据与号码属性预计算 v3.5.4 ========================
 // 设计目标：单一数据源，供主线程与 Worker 共享（Worker 通过 postMessage 接收 numProps）
 // 年份：2026（丙午·马年），生肖号码按当年太岁顺移
 (function () {
@@ -47,17 +47,16 @@
 
   // 预计算 1-49 每个号码的完整属性表，避免运行时重复计算
   const numProps = new Array(50);
-  // 缓存数组，加速查找
   const sxEntries = Object.entries(SHENGXIAO);
   const duanEntries = Object.entries(DUAN);
 
   for (let n = 1; n <= 49; n++) {
-    const head = Math.floor(n / 10);          // 十位（0-4）
-    const tail = n % 10;                      // 个位（0-9）
-    const odd = n % 2 === 1 ? "单" : "双";   // 单双
+    const head = Math.floor(n / 10);
+    const tail = n % 10;
+    const odd = n % 2 === 1 ? "单" : "双";
     const color = CATEGORIES.红波.includes(n) ? "red" : (CATEGORIES.蓝波.includes(n) ? "blue" : "green");
     const five = CATEGORIES.金.includes(n) ? "金" : (CATEGORIES.木.includes(n) ? "木" : (CATEGORIES.水.includes(n) ? "水" : (CATEGORIES.火.includes(n) ? "火" : "土")));
-    const sum = head + tail;                  // 合数（十位+个位）
+    const sum = head + tail;
     const sumOdd = sum % 2 === 1 ? "合数单" : "合数双";
     let duan = "";
     for (let i = 0; i < duanEntries.length; i++) {

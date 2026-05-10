@@ -4,7 +4,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 body {
-  font-family: 'Orbitron', system-ui, sans-serif;
+  font-family: 'Orbitron', system-ui, -apple-system, sans-serif;
   background: radial-gradient(circle at 20% 80%, rgba(0,255,234,0.1) 0%, transparent 50%),
               radial-gradient(circle at 80% 20%, rgba(255,0,85,0.1) 0%, transparent 50%),
               linear-gradient(135deg, #050510 0%, #0a0a1a 30%, #151525 100%);
@@ -24,6 +24,17 @@ body {
   pointer-events: none;
   z-index: -1;
 }
+
+/* ======================== Tailwind 关键类 Fallback ======================== */
+.hidden { display: none !important; }
+.flex { display: flex; }
+.grid { display: grid; }
+.block { display: block; }
+.inline-flex { display: inline-flex; }
+.opacity-0 { opacity: 0; }
+.translate-y-20 { transform: translateY(5rem); }
+.transition-opacity { transition-property: opacity; transition-timing-function: ease; transition-duration: 300ms; }
+.duration-300 { transition-duration: 300ms; }
 
 /* ======================== 抽屉内容布局类（完全不依赖 Tailwind CDN） ======================== */
 .dgrid-6 { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
@@ -240,7 +251,7 @@ body {
   font-size: 10px;
   font-weight: 900;
   font-family: monospace;
-  z-index: 2;
+  z-index: 5;
   text-shadow: 0 0 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.7), -1px -1px 0 rgba(0,0,0,0.5);
   background: transparent;
   width: auto;
@@ -301,6 +312,12 @@ body {
 .kill-line::before { left: 0; }
 .kill-line::after { right: 0; }
 
+@keyframes scissor {
+  0%, 100% { transform: translateY(-50%) rotate(0deg); }
+  25% { transform: translateY(-50%) rotate(-20deg); }
+  75% { transform: translateY(-50%) rotate(20deg); }
+}
+
 /* ======================== 移动端抽屉 ======================== */
 .drawer-mobile {
   transform: translateY(100%);
@@ -317,7 +334,7 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 100;
+  z-index: 40;
   background: #0a0a12cc;
   backdrop-filter: blur(12px);
   border-top: 1px solid rgba(0,255,234,0.4);
@@ -379,7 +396,6 @@ body {
 .wuxing-btn-fixed {
   width: 3rem !important;
   min-width: 3rem !important;
-  flex: none !important;
 }
 
 /* ======================== 真实开奖风格蛋形球 ======================== */
@@ -625,11 +641,8 @@ body {
   75% { transform: scale(1.1) rotate(-2deg); }
   100% { transform: scale(1) rotate(0); }
 }
-/* ========== 修复五行抽屉号码溢出 ========== */
 
 /* ========== 修复五行抽屉号码溢出（保留下角标 visible）========== */
-
-/* 1. 允许五行抽屉内每行横向滚动（不裁文本，不裁角标） */
 .wuxing-row {
   display: flex;
   align-items: center;
@@ -642,8 +655,6 @@ body {
 .wuxing-row::-webkit-scrollbar {
   display: none;
 }
-
-/* 2. 号码文本：允保留换行/滚动，不强制截断 */
 .wuxing-nums {
   font-size: 14px;
   color: rgba(0, 255, 234, 0.7);
@@ -651,8 +662,6 @@ body {
   flex-shrink: 0;
   user-select: text;
 }
-
-/* 3. 抽屉内容容器：不剪内容，但用 max-width 锁边界 */
 .drawer-mobile > *,
 [class*="dgrid-"],
 .dflex-wrap {
@@ -666,23 +675,17 @@ body {
 .dflex-wrap::-webkit-scrollbar {
   display: none;
 }
-
-/* 4. 移除全局裁剪（保留下角标溢出可见） */
 .dgrid-6 > *,
 .dgrid-4 > *,
 .dgrid-5 > * {
   min-width: 0;
-  overflow: visible; /* 关键修复：不裁角标 */
+  overflow: visible;
 }
-
-/* 5. 小屏优化：6 列降为 3 列 */
 @media (max-width: 420px) {
   .dgrid-6 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
-
-/* 6. 五行按钮小屏进一步缩窄 */
 @media (max-width: 400px) {
   .wuxing-btn-fixed {
     width: 2.5rem !important;
@@ -695,18 +698,13 @@ body {
   }
 }
 
-/* 7. 确保 ball-3d 角标可见 */
-.ball-3d {
-  overflow: visible;
-}
-.ball-3d .hit-mark {
-  z-index: 5;
-}
-/* ======================== 彩色微尘粒子背景 ======================== */
-#particle-bg {
+/* ======================== 彩色水泡粒子背景 Canvas ======================== */
+#particle-canvas {
   position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   z-index: 0;
   pointer-events: none;
 }

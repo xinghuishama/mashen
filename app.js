@@ -1,10 +1,12 @@
-// ======================== app.js — 主线程核心逻辑 v3.5.2 完整修复版 ========================
-// 修复：1) 抽屉 Tailwind 类名不可见 → 改用自定义 .d-* 样式
-//       2) 历史分页 dhidden/hidden 混乱 → 统一 dhidden
-//       3) 分页按钮事件委托 → closest 防冒泡
+// ======================== app.js — 主线程核心逻辑 v3.5.4 ========================
+// 变更记录：
+// 1) 开奖自动刷新：21:33:30 起每5秒刷新，开奖完成停止
+// 2) 新增彩色水泡粒子背景特效（initParticles）
+// 3) 保留 v3.5.3 全部审查修复（去重修复、缓存复用、z-index、内存泄漏、并发锁等）
 (function () {
   "use strict";
 
+  // ======================== 数据与配置 ========================
   const DATA = window.APP_DATA || {};
   const MAX_NUMBERS = DATA.MAX_NUMBERS || 5000;
   const SHENGXIAO = DATA.SHENGXIAO || {};
@@ -18,6 +20,7 @@
   const LS_KEY = "shenma_v4_state";
   const LS_CACHE_KEY = "shenma_v4_lottery_cache";
 
+  // ======================== DOM 缓存 ========================
   const DOM = {};
   function cacheDOM() {
     const ids = [
@@ -35,6 +38,7 @@
     if (!DOM.drawer_close) DOM.drawer_close = document.getElementById("drawer-close");
   }
 
+  // ======================== 状态管理 ========================
   let state = {
     killNums: [],
     selectedFilters: {
@@ -66,6 +70,7 @@
     return Object.values(state.selectedFilters).flat();
   }
 
+  // ======================== 本地持久化 ========================
   function saveState() {
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({
@@ -96,8 +101,9 @@
     }
   }
 
+  // ======================== 工具函数 ========================
   function escapeHtml(str) {
-    if (!str) return "";
+    if (str == null) return "";
     return String(str)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -105,14 +111,25 @@
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
   }
+
   function showToast(msg) {
     const t = DOM.toast;
     if (!t) return;
     t.textContent = msg;
     t.classList.remove("translate-y-20", "opacity-0");
-    setTimeout(function () { t.classList.add("translate-y-20", "opacity-0"); }, 2000);
+    t.style.transform = "translateY(0)";
+    t.style.opacity = "1";
+    setTimeout(function () {
+      t.classList.add("translate-y-20", "opacity-0");
+      t.style.transform = "translateY(5rem)";
+      t.style.opacity = "0";
+    }, 2000);
   }
 
+  /**
+   * 解析输入文本，提取号码与生肖
+   * v3.5.3+ 修复：移除错误去重，保留原始重复频次，使 rawCount 统计真实
+   */
   function parseInputCount(input) {
     if (!input || !input.trim()) return { nums: [], truncated: false };
     let cleaned = input.replace(/《.*?》/g, " ").replace(/[^0-9鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, " ")
@@ -130,20 +147,17 @@
         if (Number.isInteger(n) && n >= 1 && n <= 49) results.push(n);
       }
     }
-    const rawLength = results.length;          // ← 新增
-results = Array.from(new Set(results));
-
     let truncated = false;
     if (results.length > MAX_NUMBERS) { results = results.slice(0, MAX_NUMBERS); truncated = true; }
-    return { nums: results, rawLength: rawLength, truncated: truncated };
-
+    return { nums: results, truncated: truncated };
   }
 
+  // ======================== 匹配函数缓存 ========================
   let cachedMatchFuncs = null;
   let lastFilterSignature = "";
 
-  function getMatchFuncs() {
-    const allConds = getFilterSet();
+  function getMatchFuncs(filters) {
+    const allConds = filters || getFilterSet();
     const sig = allConds.join("\x00");
     if (cachedMatchFuncs && sig === lastFilterSignature) return cachedMatchFuncs;
     lastFilterSignature = sig;
@@ -191,13 +205,16 @@ results = Array.from(new Set(results));
     return function () { return false; };
   }
 
+  /**
+   * 主线程 fallback 分析：复用 getMatchFuncs 缓存，避免重复编译
+   */
   function computeAnalysisMainThread(input, killNums, filters) {
     const nums = parseInputCount(input).nums;
     const rawCount = new Uint16Array(50);
     for (let i = 0; i < nums.length; i++) rawCount[nums[i]]++;
 
     const killSet = new Set(killNums);
-    const funcs = filters.map(buildMatchFunc);
+    const funcs = getMatchFuncs(filters);
     const hitCounts = new Uint8Array(50);
 
     for (let n = 1; n <= 49; n++) {
@@ -219,6 +236,7 @@ results = Array.from(new Set(results));
     return { adjustedCount: Array.from(adjustedCount), adjustedTotal, unique, hitCounts: Array.from(hitCounts), rawCount: Array.from(rawCount) };
   }
 
+  // ======================== Web Worker 管理 ========================
   let analysisWorker = null;
   let workerReady = false;
 
@@ -258,6 +276,7 @@ results = Array.from(new Set(results));
     }
   }
 
+  // ======================== 独苗飞入特效 ========================
   let currentUniqueElement = null;
   let lastUniqueNum = null;
 
@@ -329,6 +348,7 @@ results = Array.from(new Set(results));
     requestAnimationFrame(animate);
   }
 
+  // ======================== 结果渲染 ========================
   function renderResult(adjustedCount, adjustedTotal, unique, hitCounts, rawCount) {
     try {
       const container = DOM.result;
@@ -396,7 +416,7 @@ results = Array.from(new Set(results));
       }
 
       const zeroCountNumbers = [];
-      if (rawCount) {
+      if (rawCount && rawCount.length) {
         for (let n = 1; n <= 49; n++) {
           if (rawCount[n] === 0) zeroCountNumbers.push(n);
         }
@@ -450,6 +470,7 @@ results = Array.from(new Set(results));
     });
   }
 
+  // ======================== 分析调度 ========================
   let debounceTimer = null;
 
   function runAnalysis() {
@@ -459,8 +480,7 @@ results = Array.from(new Set(results));
       try {
         const input = DOM.numbers ? DOM.numbers.value : "";
         const parsed = parseInputCount(input);
-        if (DOM.charCount) DOM.charCount.textContent = parsed.rawLength;   // ← 改这里
-
+        if (DOM.charCount) DOM.charCount.textContent = parsed.nums.length;
         if (DOM.numberWarn) {
           if (parsed.truncated) {
             DOM.numberWarn.classList.remove("hidden");
@@ -508,8 +528,10 @@ results = Array.from(new Set(results));
     saveState();
   }
 
+  // ======================== 开奖数据获取 ========================
   let isCurrentDrawComplete = false;
   let lastLotteryPeriod = "";
+  let isFetchingLottery = false;
 
   function checkDrawComplete(item) {
     if (!item || !item.openCode) return false;
@@ -545,11 +567,15 @@ results = Array.from(new Set(results));
   }
 
   async function fetchLottery() {
+    if (isFetchingLottery) return;
+    isFetchingLottery = true;
+
     const btn = DOM.refreshLotteryBtn;
-    if (!btn) return;
-    const origHtml = btn.innerHTML;
-    btn.innerHTML = '<svg class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>加载中...';
-    btn.disabled = true;
+    const origHtml = btn ? btn.innerHTML : "";
+    if (btn) {
+      btn.innerHTML = '<svg class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>加载中...';
+      btn.disabled = true;
+    }
     try {
       const res = await safeFetch(API_CONFIG.live + "?_t=" + Date.now());
       let data;
@@ -597,8 +623,11 @@ results = Array.from(new Set(results));
       } catch (cacheErr) {}
       showToast("获取开奖失败");
     } finally {
-      btn.innerHTML = origHtml;
-      btn.disabled = false;
+      isFetchingLottery = false;
+      if (btn) {
+        btn.innerHTML = origHtml;
+        btn.disabled = false;
+      }
     }
   }
 
@@ -633,8 +662,7 @@ results = Array.from(new Set(results));
       plus.className = "result-plus-sign";
       plus.textContent = "+";
       container.appendChild(plus);
-    }
-    if (codes.length >= 7) {
+
       const num = parseInt(codes[6], 10);
       const colorClass = waves[6] === "red" ? "result-ball-red" : (waves[6] === "green" ? "result-ball-green" : "result-ball-blue");
       const wx = (num >= 1 && num <= 49) ? (numProps[num] && numProps[num].five || "?") : "?";
@@ -649,6 +677,7 @@ results = Array.from(new Set(results));
     if (DOM.lotteryTime) DOM.lotteryTime.textContent = escapeHtml((item.openTime || "--").replace(" ", "\n"));
   }
 
+  // ======================== 历史开奖 ========================
   let currentHistoryData = [];
   let currentHistorySorted = [];
   let currentHistoryPage = 1;
@@ -685,7 +714,6 @@ results = Array.from(new Set(results));
     });
   }
 
-  // ======================== 历史分页渲染（v3.5.2 核心修复） ========================
   function renderHistoryPage() {
     try {
       const cont = document.getElementById("historyContent");
@@ -732,14 +760,12 @@ results = Array.from(new Set(results));
       if (pageNumEl) pageNumEl.textContent = currentHistoryPage;
       if (totalPagesEl) totalPagesEl.textContent = totalPages;
 
-      // 统一使用 dhidden 控制分页显隐（与模板初始类名一致）
       if (pagi) {
         if (totalPages <= 1) {
           pagi.classList.add("dhidden");
         } else {
           pagi.classList.remove("dhidden");
         }
-        // 用 ID 直接定位按钮，避免 first-child/last-child 选错
         const prevBtn = document.getElementById("history-prev");
         const nextBtn = document.getElementById("history-next");
         if (prevBtn) prevBtn.disabled = currentHistoryPage <= 1;
@@ -750,16 +776,7 @@ results = Array.from(new Set(results));
     }
   }
 
-  window.prevHistoryPage = function () {
-    if (currentHistoryPage > 1) { currentHistoryPage--; renderHistoryPage(); }
-  };
-  window.nextHistoryPage = function () {
-    ensureHistorySorted();
-    const totalPages = Math.ceil(currentHistorySorted.length / HISTORY_PAGE_SIZE);
-    if (currentHistoryPage < totalPages) { currentHistoryPage++; renderHistoryPage(); }
-  };
-
-  // ======================== 底部抽屉系统（v3.5.2 全部改用自定义 .d-* 样式类） ========================
+  // ======================== 底部抽屉系统 ========================
   const DrawerSystem = {
     current: null,
     templates: {
@@ -808,25 +825,25 @@ results = Array.from(new Set(results));
         }).join("");
       },
       wuxing: function () {
-  const wx = {
-    "金": "04 05 12 13 26 27 34 35 42 43",
-    "木": "08 09 16 17 24 25 38 39 46 47",
-    "水": "01 14 15 22 23 30 31 44 45",
-    "火": "02 03 10 11 18 19 32 33 40 41 48 49",
-    "土": "06 07 20 21 28 29 36 37"
-  };
-  const sel = state.selectedFilters.wuxing;
-  return '<div class="dspace-y">' + Object.entries(wx).map(function (entry) {
-    const k = entry[0], v = entry[1];
-    return '<div class="wuxing-row">' +
-      '<label class="ditems-center" style="gap:8px;min-width:0;flex-shrink:0;">' +
-        '<input type="checkbox" class="filter-checkbox hidden" value="' + k + '" data-drawer="wuxing" ' + (sel.includes(k) ? "checked" : "") + '>' +
-        '<span class="filter-label dbtn dbtn-fixed wuxing-btn-fixed">' + k + '</span>' +
-      '</label>' +
-      '<span class="wuxing-nums">' + v + '</span>' +
-    '</div>';
-  }).join("") + '</div>';
-},
+        const wx = {
+          "金": "04 05 12 13 26 27 34 35 42 43",
+          "木": "08 09 16 17 24 25 38 39 46 47",
+          "水": "01 14 15 22 23 30 31 44 45",
+          "火": "02 03 10 11 18 19 32 33 40 41 48 49",
+          "土": "06 07 20 21 28 29 36 37"
+        };
+        const sel = state.selectedFilters.wuxing;
+        return '<div class="dspace-y">' + Object.entries(wx).map(function (entry) {
+          const k = entry[0], v = entry[1];
+          return '<div class="wuxing-row">' +
+            '<label class="ditems-center" style="gap:8px;min-width:0;flex-shrink:0;">' +
+              '<input type="checkbox" class="filter-checkbox hidden" value="' + k + '" data-drawer="wuxing" ' + (sel.includes(k) ? "checked" : "") + '>' +
+              '<span class="filter-label dbtn dbtn-fixed wuxing-btn-fixed">' + k + '</span>' +
+            '</label>' +
+            '<span class="wuxing-nums">' + v + '</span>' +
+          '</div>';
+        }).join("") + '</div>';
+      },
       bandanshuang: function () {
         const items = [["合数单", "小单", "大单"], ["合数双", "小双", "大双"]];
         const sel = state.selectedFilters.bandanshuang;
@@ -911,7 +928,11 @@ results = Array.from(new Set(results));
 
       if (DOM.drawer_overlay) {
         DOM.drawer_overlay.classList.remove("hidden");
-        setTimeout(function () { DOM.drawer_overlay.classList.remove("opacity-0"); }, 10);
+        DOM.drawer_overlay.style.display = "block";
+        setTimeout(function () {
+          DOM.drawer_overlay.classList.remove("opacity-0");
+          DOM.drawer_overlay.style.opacity = "1";
+        }, 10);
       }
       if (DOM.drawer_container) DOM.drawer_container.classList.add("open");
       this.updateNavState(type);
@@ -925,10 +946,15 @@ results = Array.from(new Set(results));
       }
     },
     close: function () {
+      destroyLivePlayer();
       if (DOM.drawer_container) DOM.drawer_container.classList.remove("open");
       if (DOM.drawer_overlay) {
         DOM.drawer_overlay.classList.add("opacity-0");
-        setTimeout(function () { DOM.drawer_overlay.classList.add("hidden"); }, 300);
+        DOM.drawer_overlay.style.opacity = "0";
+        setTimeout(function () {
+          DOM.drawer_overlay.classList.add("hidden");
+          DOM.drawer_overlay.style.display = "none";
+        }, 300);
       }
       this.current = null;
       this.updateNavState(null);
@@ -940,11 +966,46 @@ results = Array.from(new Set(results));
 
       content.addEventListener("change", function (e) {
         const cb = e.target;
-        if (!cb.classList.contains("filter-checkbox")) return;
-        const dr = cb.dataset.drawer;
-        const val = cb.value;
-        if (dr && state.selectedFilters[dr] !== undefined) {
-          toggleFilter(dr, val, cb.checked);
+        if (cb.classList && cb.classList.contains("filter-checkbox")) {
+          const dr = cb.dataset.drawer;
+          const val = cb.value;
+          if (dr && state.selectedFilters[dr] !== undefined) {
+            toggleFilter(dr, val, cb.checked);
+          }
+          return;
+        }
+        if (e.target.id === "historyYear") {
+          const year = e.target.value;
+          if (!year) return;
+          historyYearLoaded = year;
+          const loadDiv = document.getElementById("historyLoading");
+          const cont = document.getElementById("historyContent");
+          if (loadDiv) loadDiv.classList.remove("dhidden");
+          (async function () {
+            try {
+              if (historyCache[year]) {
+                currentHistoryData = historyCache[year];
+              } else {
+                const res = await safeFetch(API_CONFIG.historyBase + year);
+                const json = await res.json();
+                if (json.code === 200 && Array.isArray(json.data)) {
+                  currentHistoryData = json.data;
+                  historyCache[year] = json.data;
+                } else {
+                  currentHistoryData = [];
+                }
+              }
+              currentHistorySorted = [];
+              currentHistoryPage = 1;
+              renderHistoryPage();
+            } catch (e) {
+              console.error("history fetch error:", e);
+              currentHistoryData = [];
+              if (cont) cont.innerHTML = '<div style="color:#f87171;">加载失败</div>';
+            } finally {
+              if (loadDiv) loadDiv.classList.add("dhidden");
+            }
+          })();
         }
       });
 
@@ -956,7 +1017,6 @@ results = Array.from(new Set(results));
         }
       });
 
-      // v3.5.2 修复：使用 closest 防止点击到内部 svg/span 时事件失效
       content.addEventListener("click", function (e) {
         const prevBtn = e.target.closest("#history-prev");
         const nextBtn = e.target.closest("#history-next");
@@ -995,42 +1055,6 @@ results = Array.from(new Set(results));
           return;
         }
       });
-
-      content.addEventListener("change", function (e) {
-        if (e.target.id === "historyYear") {
-          const year = e.target.value;
-          if (!year) return;
-          historyYearLoaded = year;
-          const loadDiv = document.getElementById("historyLoading");
-          const cont = document.getElementById("historyContent");
-          if (loadDiv) loadDiv.classList.remove("dhidden");
-          (async function () {
-            try {
-              if (historyCache[year]) {
-                currentHistoryData = historyCache[year];
-              } else {
-                const res = await safeFetch(API_CONFIG.historyBase + year);
-                const json = await res.json();
-                if (json.code === 200 && Array.isArray(json.data)) {
-                  currentHistoryData = json.data;
-                  historyCache[year] = json.data;
-                } else {
-                  currentHistoryData = [];
-                }
-              }
-              currentHistorySorted = [];
-              currentHistoryPage = 1;
-              renderHistoryPage();
-            } catch (e) {
-              console.error("history fetch error:", e);
-              currentHistoryData = [];
-              if (cont) cont.innerHTML = '<div style="color:#f87171;">加载失败</div>';
-            } finally {
-              if (loadDiv) loadDiv.classList.add("dhidden");
-            }
-          })();
-        }
-      });
     },
     updateNavState: function (activeType) {
       document.querySelectorAll(".nav-item").forEach(function (el) {
@@ -1047,6 +1071,7 @@ results = Array.from(new Set(results));
     }
   };
 
+  // ======================== 复制功能 ========================
   function copyResult() {
     if (!lastAnalysisResult) { showToast("暂无分析结果"); return; }
     const sortedFreqMap = lastAnalysisResult.sortedFreqMap;
@@ -1076,11 +1101,14 @@ results = Array.from(new Set(results));
     ta.value = text;
     ta.style.position = "fixed";
     ta.style.left = "-9999px";
+    ta.style.top = "0";
+    ta.setAttribute("readonly", "");
     document.body.appendChild(ta);
     ta.select();
+    ta.setSelectionRange(0, text.length);
     try {
-      document.execCommand("copy");
-      showToast("已复制");
+      const ok = document.execCommand("copy");
+      showToast(ok ? "已复制" : "复制失败");
     } catch (e) {
       showToast("复制失败");
     }
@@ -1088,6 +1116,7 @@ results = Array.from(new Set(results));
   }
   window.copyResult = copyResult;
 
+  // ======================== 直播播放器 ========================
   let currentHls = null;
   let currentFlvPlayer = null;
   let liveSourceIndex = 0;
@@ -1267,20 +1296,117 @@ results = Array.from(new Set(results));
     if (video) { video.pause(); video.removeAttribute("src"); video.load(); }
   }
 
+  // ======================== 自动刷新（v3.5.4：21:33:30起每5秒） ========================
   function initAutoRefresh() {
+    // 每秒检查是否在开奖窗口内，但只在窗口内每5秒实际发一次请求
     setInterval(function () {
-      if (isCurrentDrawComplete) return;
+      if (isCurrentDrawComplete || isFetchingLottery) return;
       const now = new Date();
       const h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
       const totalSec = h * 3600 + m * 60 + s;
-      const startSec = 21 * 3600 + 33 * 60 + 20;
-      const endSec = 21 * 3600 + 35 * 60 + 0;
+      const startSec = 21 * 3600 + 33 * 60 + 30; // 21:33:30
+      const endSec = 21 * 3600 + 35 * 60 + 0;    // 21:35:00
+
       if (document.visibilityState === "visible" && totalSec >= startSec && totalSec <= endSec) {
-        fetchLottery();
+        const nowTs = Date.now();
+        // 确保两次自动刷新间隔至少5秒
+        if (!window._lastAutoFetchTime || (nowTs - window._lastAutoFetchTime) >= 5000) {
+          window._lastAutoFetchTime = nowTs;
+          fetchLottery();
+        }
+      } else {
+        // 离开开奖窗口后重置计时器，下次进入时立即触发第一次
+        window._lastAutoFetchTime = 0;
       }
     }, 1000);
   }
 
+  // ======================== 彩色水泡粒子背景 ========================
+  function initParticles() {
+    const canvas = document.getElementById("particle-canvas");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    let width, height;
+    let particles = [];
+    const MAX_PARTICLES = 60; // 低端设备友好数量，平衡视觉效果与性能
+
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+    }
+
+    function createParticle() {
+      return {
+        x: Math.random() * width,
+        y: height + Math.random() * 30,
+        r: Math.random() * 2.5 + 0.8,       // 半径 0.8-3.3px，小水泡感
+        speedY: Math.random() * 1.2 + 0.4,   // 上升速度
+        speedX: (Math.random() - 0.5) * 0.4, // 轻微水平漂移
+        alpha: Math.random() * 0.4 + 0.15,
+        hue: Math.random() * 360,
+        wobble: Math.random() * Math.PI * 2,
+        wobbleSpeed: Math.random() * 0.015 + 0.005
+      };
+    }
+
+    function initDots() {
+      particles = [];
+      for (let i = 0; i < MAX_PARTICLES; i++) {
+        const p = createParticle();
+        p.y = Math.random() * height; // 初始全屏分布，避免等待从底部升起
+        particles.push(p);
+      }
+    }
+
+    let frameId;
+    function animate() {
+      // 页面不可见时暂停绘制，节省 GPU/CPU（保留 rAF 循环但不执行 clearRect 与绘制）
+      if (document.hidden) {
+        frameId = requestAnimationFrame(animate);
+        return;
+      }
+      ctx.clearRect(0, 0, width, height);
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.y -= p.speedY;
+        p.wobble += p.wobbleSpeed;
+        p.x += Math.sin(p.wobble) * 0.4 + p.speedX;
+
+        // 超出顶部或左右边界则重置到底部
+        if (p.y < -10 || p.x < -10 || p.x > width + 10) {
+          particles[i] = createParticle();
+        }
+
+        // 主球体：五颜六色半透明
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = "hsla(" + p.hue + ", 80%, 60%, " + p.alpha + ")";
+        ctx.fill();
+
+        // 水泡高光白点
+        ctx.beginPath();
+        ctx.arc(p.x - p.r * 0.35, p.y - p.r * 0.35, p.r * 0.25, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.fill();
+      }
+
+      frameId = requestAnimationFrame(animate);
+    }
+
+    resize();
+    initDots();
+    animate();
+
+    window.addEventListener("resize", function () {
+      resize();
+      initDots();
+    });
+  }
+
+  // ======================== 初始化入口 ========================
   function init() {
     cacheDOM();
     loadState();
@@ -1327,105 +1453,14 @@ results = Array.from(new Set(results));
     fetchLottery();
     runAnalysis();
     initAutoRefresh();
+    initParticles(); // v3.5.4：启动彩色水泡粒子背景
 
     window.addEventListener("beforeunload", function () {
       terminateWorker();
     });
 
-    console.log("%c✅ 神码再现 v3.5.2 完整修复版已加载", "color:#00ffea;font-weight:bold");
+    console.log("%c✅ 神码再现 v3.5.4 粒子特效版已加载", "color:#00ffea;font-weight:bold");
   }
 
   document.addEventListener("DOMContentLoaded", init);
-  /* ======================== 彩色微尘粒子背景 ======================== */
-  (function initParticles() {
-    const canvas = document.createElement("canvas");
-    canvas.id = "particle-bg";
-    document.body.insertBefore(canvas, document.body.firstChild);
-
-    const ctx = canvas.getContext("2d", { alpha: true });
-    let W, H, dpr;
-    let particles = [];
-    let frame = 0;
-
-    const isLowEnd = navigator.hardwareConcurrency <= 4 ||
-                     (navigator.deviceMemory && navigator.deviceMemory <= 4);
-    const MAX_COUNT = isLowEnd ? 40 : 80;
-    const SPAWN_EVERY = isLowEnd ? 4 : 2;
-
-    const COLORS = [
-      "#ff3366", "#33cc66", "#3366ff", "#aa33ff",
-      "#00ffea", "#ff66cc", "#ff9933", "#ffea00"
-    ];
-
-    function resize() {
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
-      W = window.innerWidth;
-      H = window.innerHeight;
-      canvas.width  = W * dpr;
-      canvas.height = H * dpr;
-      canvas.style.width  = W + "px";
-      canvas.style.height = H + "px";
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-
-    function rand(a, b) { return Math.random() * (b - a) + a; }
-
-    class Dot {
-      constructor() { this.reset(true); }
-      reset(initial) {
-        this.x = rand(0, W);
-        this.y = initial ? rand(0, H) : H + rand(5, 40);
-        this.r = rand(1.2, 3.2);
-        this.speedY = rand(0.2, 0.9);
-        this.speedX = rand(-0.15, 0.15);
-        this.alpha = rand(0.25, 0.7);
-        this.fade = rand(0.996, 0.999);
-        this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
-        this.wobble = rand(0, Math.PI * 2);
-        this.wobbleSpeed = rand(0.01, 0.03);
-      }
-      update() {
-        this.y -= this.speedY;
-        this.x += this.speedX + Math.sin(this.wobble) * 0.15;
-        this.wobble += this.wobbleSpeed;
-        this.alpha *= this.fade;
-        if (this.y < -5 || this.alpha < 0.05) this.reset(false);
-      }
-      draw(c) {
-        c.globalAlpha = this.alpha;
-        c.fillStyle = this.color;
-        c.beginPath();
-        c.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-        c.fill();
-      }
-    }
-
-    function initDots() {
-      particles = [];
-      for (let i = 0; i < MAX_COUNT; i++) particles.push(new Dot());
-    }
-
-    let last = 0;
-    function loop(ts) {
-      requestAnimationFrame(loop);
-      if (isLowEnd && ts - last < 33) return;
-      last = ts;
-      ctx.clearRect(0, 0, W, H);
-      frame++;
-      if (frame % SPAWN_EVERY === 0 && particles.length < MAX_COUNT) {
-        particles.push(new Dot());
-      }
-      for (let i = 0; i < particles.length; i++) {
-        particles[i].update();
-        particles[i].draw(ctx);
-      }
-      ctx.globalAlpha = 1;
-    }
-
-    resize();
-    initDots();
-    requestAnimationFrame(loop);
-    window.addEventListener("resize", function() { resize(); initDots(); });
-  })();
-
 })();
