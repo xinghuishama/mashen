@@ -592,8 +592,8 @@ body {
   .history-item-header { font-size: 11px; margin-bottom: 6px; }
 }
 @media (max-width: 360px) {
-  .history-ball-card { min-width: 32px; }
-  .history-ball-number { font-size: 13px; padding: 3px 1px; }
+  .history-ball-card { min-width: 36px; }
+  .history-ball-number { font-size: 14px; padding: 4px 1px; }
   .history-ball-tag { font-size: 8px; }
   .history-plus-sign { font-size: 14px; }
   .history-balls-row { gap: 1px; }
