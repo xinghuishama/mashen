@@ -1061,11 +1061,11 @@
         const dr = el.dataset.drawer;
         if (dr === activeType) {
           el.classList.add("bg-[#00ffea]", "text-black");
-          el.classList.remove("bg-[#1a1a2a]", "text-gray-400");
+          el.classList.remove("bg-transparent", "text-gray-400");
         } else {
           el.classList.remove("bg-[#00ffea]", "text-black");
           if (dr === "selectnone") el.classList.add("bg-[#ff0055]/20", "text-[#ff0055]");
-          else el.classList.add("bg-[#1a1a2a]", "text-gray-400");
+          else el.classList.add("bg-transparent", "text-gray-400");
         }
       });
     }
