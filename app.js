@@ -436,7 +436,7 @@
         htmlParts.push("</div></div>");
       }
 
-      htmlParts.push('<div class="mt-4 grid grid-cols-3 gap-2 p-3 bg-[#1a1a2a] rounded-lg border border-[#00ffea]/20"><div class="text-center"><div class="text-[#00ffea] font-bold text-lg">' + unique + '</div><div class="text-xs text-gray-500">有效数字个数</div></div><div class="text-center"><div class="text-[#00ffea] font-bold text-lg">' + adjustedTotal + '</div><div class="text-xs text-gray-500">调整后总次数</div></div><div class="text-center"><div class="text-[#00ffea] font-bold text-lg">' + avg + '</div><div class="text-xs text-gray-500">调整后平均次数</div></div></div>');
+      htmlParts.push('<div class="mt-4 grid grid-cols-3 gap-2 p-3 bg-transparent rounded-lg border border-[#00ffea]/20"><div class="text-center"><div class="text-[#00ffea] font-bold text-lg">' + unique + '</div><div class="text-xs text-gray-500">有效数字个数</div></div><div class="text-center"><div class="text-[#00ffea] font-bold text-lg">' + adjustedTotal + '</div><div class="text-xs text-gray-500">调整后总次数</div></div><div class="text-center"><div class="text-[#00ffea] font-bold text-lg">' + avg + '</div><div class="text-xs text-gray-500">调整后平均次数</div></div></div>');
 
       container.innerHTML = htmlParts.join("");
 
@@ -1337,25 +1337,30 @@
       canvas.height = height;
     }
 
-    function createParticle() {
+    function createParticle(yOverride) {
+      const speedY = Math.random() * 0.8 + 0.3;   // 上升速度 0.3-1.1
+      const speedX = (Math.random() - 0.5) * 0.4; // 轻微水平漂移
+      const y = yOverride !== undefined ? yOverride : height + Math.random() * 30;
+      // 根据当前位置和速度计算刚好飞到顶部（y=-80）所需的帧数
+      const life = Math.min((y + 80) / speedY, 3000); // 上限3000帧（约50秒）防内存泄漏
       return {
         x: Math.random() * width,
-        y: height + Math.random() * 30,
+        y: y,
         r: Math.random() * 2.5 + 0.8,       // 半径 0.8-3.3px，小水泡感
-        speedY: Math.random() * 1.2 + 0.4,   // 上升速度
-        speedX: (Math.random() - 0.5) * 0.4, // 轻微水平漂移
+        speedY: speedY,
+        speedX: speedX,
         alpha: Math.random() * 0.4 + 0.15,
         hue: Math.random() * 360,
         wobble: Math.random() * Math.PI * 2,
-        wobbleSpeed: Math.random() * 0.015 + 0.005
+        wobbleSpeed: Math.random() * 0.015 + 0.005,
+        life: life
       };
     }
 
     function initDots() {
       particles = [];
       for (let i = 0; i < MAX_PARTICLES; i++) {
-        const p = createParticle();
-        p.y = Math.random() * height; // 初始全屏分布，避免等待从底部升起
+        const p = createParticle(Math.random() * height); // 初始全屏均匀分布
         particles.push(p);
       }
     }
@@ -1376,7 +1381,7 @@
         p.x += Math.sin(p.wobble) * 0.4 + p.speedX;
 
         // 超出顶部或左右边界则重置到底部
-        if (p.y < -10 || p.x < -10 || p.x > width + 10) {
+        if (p.life <= 0 || p.y < -80 || p.x < -10 || p.x > width + 10) {
           particles[i] = createParticle();
         }
 
