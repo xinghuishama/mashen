@@ -1,103 +1,140 @@
-# 神码再现 v3.4 — GitHub Pages 部署版
+# 神马再现 v3.6.3
 
-> 🎯 一个可直接部署到 GitHub Pages 的六合彩智能分析工具。离线可用，Worker 加速，Web 版与 APK 版共用同一套前端代码。
+> 澳门彩智能分析工具 —— 五行自动跨年 · 生肖自动推算 · 实时开奖直播
 
-## 在线体验
-
-部署后访问地址：
-```
-https://你的用户名.github.io/shenma/
-```
-
-## 部署步骤（30 秒搞定）
-
-### 方式 1：直接上传（最简单）
-
-1. 访问 [github.com/new](https://github.com/new) 创建新仓库
-2. 仓库名建议：`shenma`（或其他你喜欢的名字）
-3. 上传这 5 个文件到仓库根目录：
-   ```
-   index.html
-   app.js
-   worker.js
-   style.css
-   data.js
-   ```
-4. 仓库 → **Settings → Pages** → Source 选 **Deploy from a branch** → 选 `main` 分支 → Save
-5. 等待 1-2 分钟，访问 `https://你的用户名.github.io/shenma/`
-
-### 方式 2：Git 命令行
-
-```bash
-git clone https://github.com/你的用户名/shenma.git
-cd shenma
-cp /path/to/这5个文件/ .
-git add .
-git commit -m "v3.4 initial"
-git push origin main
-```
-
-然后去仓库 **Settings → Pages** 开启 Pages 服务即可。
+**在线预览：** [https://xinghuishama.github.io/](https://xinghuishama.github.io/)
 
 ---
 
-## 项目特性
+## 功能特性
 
-| 特性 | 说明 |
-|------|------|
-| ⚡ Web Worker 全量计算 | 解析 + 频次统计 + 筛选命中全部移入 Worker，主线程零阻塞 |
-| 🔒 无 XSS 面 | 事件代理模式，零 inline onclick |
-| 📴 离线可用 | localStorage 缓存开奖数据 + 筛选状态 |
-| 🧠 缓存签名 | 筛选条件变更自动重建匹配函数，防止状态不一致 |
-| ✂️ 命中剪枝 | `hit > 3` 提前退出，减少无效 CPU 消耗 |
-| 📱 12 维筛选器 | 杀码 / 生肖 / 头数 / 尾数 / 数段 / 波色 / 五行 / 半单双 / 合数 |
-| 🎱 3D 蛋形球 | 真实开奖风格红/绿/蓝蛋形球，完整五行/生肖/波色标签 |
-| 🎯 独苗守护 | 仅有一个号码未命中时，触发飞入动画 + 脉冲高亮 |
+| 模块 | 功能 |
+|:---|:---|
+| **智能杀码** | 输入号码串，自动统计频次，支持斩杀线标记 |
+| **多维筛选** | 生肖、头数、尾数、数段、波色、五行、半单双、合数 |
+| **五行分析** | **自动跨年** —— 基于60甲子纳音，每年自动右移序列 |
+| **生肖推算** | **自动跨年** —— 太岁生肖逐年自动轮换 |
+| **历史开奖** | 按年份查询，号码五行属性与开奖年份严格匹配 |
+| **开奖直播** | 21:33-21:35 自动加载，三源自动切换（API/HLS/FLV） |
+| **实时刷新** | 开奖时段每5秒自动刷新，开完七码自动停止 |
+| **粒子特效** | 水泡粒子自下而上，透明背景，60帧优化 |
+| **离线缓存** | Service Worker 支持，断网可查看历史数据 |
+| **一键复制** | 分析结果、单号点击复制 |
 
 ---
 
 ## 技术栈
 
-- **Vanilla JS** — 无框架依赖，零构建工具
-- **Web Worker** — 独立文件 worker.js，非 Blob URL
-- **Tailwind CSS** — 通过 CDN 加载
-- **TypedArray** — `Uint8Array` / `Uint16Array` 降低内存与 GC 压力
-- **DocumentFragment** — 批量 DOM 插入，减少重排
+- **纯前端**：HTML5 + CSS3 + Vanilla JavaScript
+- **零依赖**：无需 Node.js / 构建工具，单文件即开即用
+- **Web Worker**：高频分析 offload 到 Worker 线程，主线程不卡顿
+- 
 
 ---
 
-## 文件说明
+## 文件结构
 
-| 文件 | 作用 |
-|------|------|
-| `index.html` | 入口页面，CDN 资源 + 本地资源引用 |
-| `app.js` | 主线程：状态管理 / 事件代理 / 渲染 / 抽屉系统 / 离线缓存 |
-| `worker.js` | Worker 线程：输入解析 / 频次统计 / 筛选命中 / 剪枝优化 |
-| `style.css` | 全部样式：3D 球 / 蛋形球 / 动画 / 抽屉 / 历史记录 |
-| `data.js` | 静态数据：生肖 / 波色 / 五行 / 数段 / numProps 预计算 |
-
----
-
-## APK 打包
-
-如果需要打包成 Android APK，请使用对应的 Android Studio 工程：
-
-[下载 shenma-v34.zip（Android Studio 工程）](https://你的发布地址/shenma-v34.zip)
-
-或者参考这个仓库的 `android/` 目录（如果有）。
+```
+mashen/
+├── index.html          # 主页面（UI + 粒子画布 + 抽屉布局）
+├── data.js             # 基础数据（生肖/波色/段/五行跨年算法）
+├── app.js              # 主逻辑（DOM操作、分析引擎、直播、历史）
+├── worker.js           # Web Worker（筛选匹配、频次统计）
+└── style.css           # 样式（Tailwind CDN + 自定义特效）
+```
 
 ---
 
-## 截图预览
+## 核心算法
 
-![预览](preview.jpg)
+### 五行自动跨年
+
+基于 **60甲子纳音五行** + **30位周期序列**：
+
+```javascript
+const WUXING_BASE_SEQ = [
+  '金','金','土','土','木','木','火','火','金','金',
+  '水','水','木','木','火','火','土','土','水','水',
+  '木','木','金','金','土','土','水','水','火','火'
+];
+
+// 每年序列整体右移1位，01号五行 = 当年纳音五行
+function getNumberWuxing(num, year) {
+  const idx = (num - 1) % 30;          // 周期30
+  const offset = year - 2023;           // 相对基准年偏移
+  return WUXING_BASE_SEQ[(idx - offset + 30) % 30];
+}
+```
+
+**验证：**
+| 年份 | 干支 | 纳音 | 01号五行 |
+|:---:|:---:|:---:|:---:|
+| 2023 | 癸卯 | 金箔金 | **金** |
+| 2024 | 甲辰 | 佛灯火 | **火** |
+| 2025 | 乙巳 | 佛灯火 | **火** |
+| 2026 | 丙午 | 天河水 | **水** |
+| 2027 | 丁未 | 天河水 | **水** |
+| 2028 | 戊申 | 大驿土 | **土** |
+
+### 生肖自动跨年
+
+```javascript
+const ZODIAC_SEQUENCE = ["龙","蛇","马","羊","猴","鸡","狗","猪","鼠","牛","虎","兔"];
+const BASE_YEAR = 2024; // 基准龙年
+
+function generateShengxiaoMap(year) {
+  const taiSuiIdx = ((year - BASE_YEAR) % 12 + 12) % 12;
+  // 太岁生肖占01，其余依次顺延
+}
+```
+
+### 历史开奖年份匹配
+
+历史记录中的号码五行**严格按开奖当年**计算，不会错误使用当前年份：
+
+```javascript
+const recordYear = extractYearFromPeriod(item.expect); // 2024/2025/2026...
+const wx = getFive(num, recordYear);                   // 按开奖年查五行
+```
 
 ---
 
-## 开源协议
 
-MIT License — 自由使用，二次开发请注明出处。
 
 ---
 
-> 💡 提示：GitHub Pages 免费额度无流量限制，适合个人长期托管。
+## 浏览器兼容性
+
+| 浏览器 | 支持 |
+|:---|:---:|
+| Chrome / Edge / Kiwi | ✅ 完美 |
+| Safari iOS | ✅ 支持（直播需 HLS） |
+| Firefox | ✅ 支持 |
+| 微信内置浏览器 | ⚠️ 部分直播源受限 |
+
+---
+
+## 更新日志
+
+### v3.6.3（2026-05-23）
+- **新增**：五行自动跨年算法（30位周期序列）
+- **新增**：历史开奖按年份匹配五行属性
+- **修复**：开奖区五行标签多余 `<` 符号
+- **优化**：Worker 线程五行筛选同步主线程年份
+
+### v3.6.2
+- 粒子特效内存优化
+- 底部导航抽屉修复
+- 开奖时间精准控制（21:33:30-21:35:00）
+
+---
+
+## 免责声明
+
+本项目为**前端技术学习演示**，所有彩票数据来源于公开 API。  
+僅供港澳公民參考，请理性购彩，量力而行，切勿沉迷，暫不適用其它外圍和博彩使用。
+
+---
+
+**License：** MIT  
+**作者：** xinghuishama
