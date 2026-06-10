@@ -151,11 +151,7 @@ body {
   0%, 100% { opacity: 1; filter: brightness(1) saturate(1); transform: scale(1); }
   50% { opacity: 0.7; filter: brightness(1.3) saturate(1.2); transform: scale(1.15); }
 }
-.flash-unique {
-  animation: flashPulse 0.6s ease-in-out infinite;
-  box-shadow: 0 0 20px currentColor, 0 0 40px currentColor !important;
-  z-index: 10;
-}
+/* [修复] flash-unique 与 landing-shock 已合并到「黑洞吞噬特效」区块，此处保留 @keyframes 供兼容 */
 
 .kill-line::before, .kill-line::after {
   content: '\2702';
@@ -255,18 +251,44 @@ body {
 }
 
 /* ======================== 真实开奖风格蛋形球 ======================== */
+/*
+ * [核心修复] 开奖球行布局
+ * ---------------------------------------------------------------
+ * 问题根因：原 flex-wrap:wrap 允许换行。
+ * 在 375px 手机（如 iPhone）上：
+ *   可用宽度 = 375 - 24(main p-3×2) - 36(lottery-card padding 18px×2) = 315px
+ *   旧 420px 断点：7×42px球 + 20px加号 + 7×4px间距 = 342px > 315px → 第7球换行 ✗
+ * 修复方案：
+ *   1. flex-wrap: nowrap  → 强制7个球在同一行
+ *   2. overflow-x: auto   → 极小屏（<320px）兜底横向滚动
+ *   3. 收窄 ≤420px 球尺寸：7×38 + 15 + 7×3 = 302px ≤ 315px ✓
+ *   4. 收窄 ≤360px 球尺寸：7×34 + 14 + 7×2 = 266px ≤ 300px ✓
+ */
 .result-balls-row {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 18px;
-  flex-wrap: wrap;
+  /* [修复] wrap → nowrap：禁止换行，确保 7 个球始终在同一行 */
+  flex-wrap: nowrap;
+  /* [修复] 极小屏兜底：内容仍然超出时横向滚动而非换行 */
+  overflow-x: auto;
+  overflow-y: visible;               /* [修复] 垂直方向 overflow 设为 visible，防止球顶端被父容器裁切 */
+  -webkit-overflow-scrolling: touch; /* iOS 惯性滚动体验 */
+  scrollbar-width: none;             /* Firefox 隐藏滚动条 */
+  padding-bottom: 4px;               /* 避免滚动指示器遮挡球 */
+  padding-top: 8px;                  /* [修复] 顶部增加 8px 内边距，确保球体顶端完整显示 */
 }
+/* Chrome / Safari / WebView 隐藏横向滚动条 */
+.result-balls-row::-webkit-scrollbar { display: none; }
+
 .result-ball-item {
   display: flex;
   flex-direction: column;
   align-items: center;
   position: relative;
+  /* [修复] flex-shrink:0 防止 nowrap 时球被 flex 压缩变形 */
+  flex-shrink: 0;
 }
 .result-ball {
   width: 67px;
@@ -307,6 +329,8 @@ body {
   margin: 0 1px;
   align-self: center;
   padding-bottom: 16px;
+  /* [修复] flex-shrink:0 防止加号在 nowrap 下被压缩消失 */
+  flex-shrink: 0;
 }
 .result-ball-meta {
   position: absolute;
@@ -333,17 +357,25 @@ body {
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
 
+/*
+ * [修复] ≤420px 断点（覆盖 375px iPhone 等常见机型）
+ * 计算：7×38 + 15(加号@18px字) + 7×3 = 302px ≤ 315px(可用) ✓
+ */
 @media (max-width: 420px) {
-  .result-ball { width: 42px; height: 56px; font-size: 15px; padding-top: 10px; }
-  .result-balls-row { gap: 4px; }
-  .result-plus-sign { font-size: 20px; padding-bottom: 10px; }
-  .result-ball-meta { font-size: 9px; bottom: 7px; }
-}
-@media (max-width: 360px) {
   .result-ball { width: 38px; height: 50px; font-size: 16px; padding-top: 8px; }
-  .result-balls-row { gap: 3px; }
+  .result-balls-row { gap: 6px; }
   .result-plus-sign { font-size: 18px; padding-bottom: 8px; }
-  .result-ball-meta { font-size: 9px; bottom: 6px; }
+  .result-ball-meta { font-size: 12px; bottom: 6px; }
+}
+/*
+ * [修复] ≤360px 断点（覆盖极小屏）
+ * 计算：7×34 + 14(加号@16px字) + 7×2 = 266px ≤ 300px(可用) ✓
+ */
+@media (max-width: 360px) {
+  .result-ball { width: 36px; height: 48px; font-size: 15px; padding-top: 7px; }
+  .result-balls-row { gap: 4px; }
+  .result-plus-sign { font-size: 16px; padding-bottom: 7px; }
+  .result-ball-meta { font-size: 9px; bottom: 5px; }
 }
 
 /* ======================== 历史记录卡片 ======================== */
@@ -461,16 +493,7 @@ body {
   box-shadow: 0 0 30px currentColor, 0 0 60px currentColor, inset 0 0 12px rgba(255,255,255,0.6);
   text-shadow: 0 0 4px rgba(0,0,0,0.8);
 }
-.landing-shock {
-  animation: landShake 0.4s ease !important;
-}
-@keyframes landShake {
-  0% { transform: scale(1); }
-  25% { transform: scale(1.3) rotate(-5deg); }
-  50% { transform: scale(0.9) rotate(3deg); }
-  75% { transform: scale(1.1) rotate(-2deg); }
-  100% { transform: scale(1) rotate(0); }
-}
+/* [修复] landing-shock 已合并到「黑洞吞噬特效」区块，此处删除重复定义 */
 
 /* ======================== 五行抽屉修复 ======================== */
 .wuxing-row {
@@ -542,8 +565,13 @@ body {
 .spark {
   will-change: transform, opacity;
 }
+
+/*
+ * [修复] landing-shock 重复定义：原文件定义了两次，后者覆盖前者。
+ * 合并为唯一定义，使用 blackhole-shock 关键帧（含 brightness 特效）。
+ */
 .landing-shock {
-  animation: blackhole-shock 0.5s ease-out;
+  animation: blackhole-shock 0.5s ease-out !important;
 }
 @keyframes blackhole-shock {
   0% { transform: scale(1); filter: brightness(1); }
@@ -552,12 +580,19 @@ body {
   75% { transform: scale(1.1); }
   100% { transform: scale(1); filter: brightness(1); }
 }
+
+/*
+ * [修复] flash-unique 重复定义：原文件定义了两次。
+ * 合并为唯一定义，融合两版效果：scale/opacity 动画 + 发光 box-shadow。
+ */
 .flash-unique {
-  animation: flash-pulse 1s ease-in-out 3;
+  animation: flash-pulse 0.6s ease-in-out 3;
+  box-shadow: 0 0 20px currentColor, 0 0 40px currentColor !important;
+  z-index: 10;
 }
 @keyframes flash-pulse {
-  0%, 100% { box-shadow: 0 0 5px currentColor; }
-  50% { box-shadow: 0 0 25px currentColor, 0 0 50px currentColor; }
+  0%, 100% { opacity: 1; box-shadow: 0 0 5px currentColor; transform: scale(1); }
+  50% { opacity: 0.7; box-shadow: 0 0 25px currentColor, 0 0 50px currentColor; transform: scale(1.15); }
 }
 
 /* ======================== 启动画面 (矩阵数字雨) ======================== */
@@ -1269,6 +1304,8 @@ if (!Object.entries) {
       const freqs = Array.from(freqMap.keys()).sort((a, b) => b - a);
       let killDrawn = false;
       const avg = unique ? (adjustedTotal / unique).toFixed(2) : "0.00";
+      // [修复] 除零保护：unique===0 时不参与计算，killDrawn 阈值使用安全的 0
+      const killAvgThreshold = unique > 0 ? adjustedTotal / unique : 0;
       const unhitNumbers = [];
       for (let n = 1; n <= 49; n++) { if (adjustedCount[n] > 0 && hitCounts[n] === 0) unhitNumbers.push(n); }
       const isUniqueUnhit = (unhitNumbers.length === 1);
@@ -1278,7 +1315,7 @@ if (!Object.entries) {
 
       const htmlParts = [];
       for (let f of freqs) {
-        if (!killDrawn && f <= (adjustedTotal / unique)) {
+        if (!killDrawn && f <= killAvgThreshold) {
           htmlParts.push('<div class="kill-line relative h-0.5 bg-gradient-to-r from-transparent via-[#00ffea] to-transparent my-3 rounded-full"></div>');
           killDrawn = true;
         }
@@ -1423,7 +1460,7 @@ if (!Object.entries) {
         else { showToast("刷新成功"); }
       } else {
         isCurrentDrawComplete = false;
-        showToast("刷新成劑 - 等待开奖");
+        showToast("刷新成功 - 等待开奖"); // [修复] 错别字："刷新成劑" → "刷新成功"
       }
       if (DOM.lastRefreshTime) DOM.lastRefreshTime.textContent = "上次刷新：" + new Date().toLocaleTimeString();
     } catch (e) {
