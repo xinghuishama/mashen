@@ -766,7 +766,7 @@ if (!Object.entries) {
 
   const MAX_NUMBERS = 5000;
 
-  const ZODIAC_SEQUENCE = ["龍","蛇","馬","羊","猴","雞","狗","豬","鼠","牛","虎","兔"];
+  const ZODIAC_SEQUENCE = ["龙","蛇","马","羊","猴","鸡","狗","猪","鼠","牛","虎","兔"];
   const BASE_YEAR = 2024;
 
   function generateShengxiaoMap(year) {
@@ -1020,7 +1020,7 @@ if (!Object.entries) {
 
   function parseInputCount(input) {
     if (!input || !input.trim()) return { nums: [], truncated: false };
-    let cleaned = input.replace(/《.*?》/g, " ").replace(/[^0-9鼠牛虎兔龍蛇馬羊猴雞狗豬]/g, " ").replace(/([鼠牛虎兔龍蛇馬羊猴雞狗豬])/g, " $1 ");
+    let cleaned = input.replace(/《.*?》/g, " ").replace(/[^0-9鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, " ").replace(/([鼠牛虎兔龙蛇马羊猴鸡狗猪])/g, " $1 ");
     const tokens = cleaned.split(" ").filter(t => t.length > 0);
     if (!tokens.length) return { nums: [], truncated: false };
     let results = [];
@@ -1577,7 +1577,7 @@ if (!Object.entries) {
     templates: {
       shama: () => `<textarea id="kill-input" rows="3" class="dinput">${state.killNums.join(" ")}</textarea>`,
       shengxiao: () => {
-        const sxs = ["鼠","牛","虎","兔","龍","蛇","馬","羊","猴","雞","狗","豬"];
+        const sxs = ["鼠","牛","虎","兔","龙","蛇","马","羊","猴","鸡","狗","猪"];
         const sel = state.selectedFilters.shengxiao;
         return '<div class="dgrid-6">' + sxs.map(sx => `<label><input type="checkbox" class="filter-checkbox hidden" value="生肖${sx}" data-drawer="shengxiao" ${sel.includes("生肖"+sx)?"checked":""}><span class="filter-label dbtn">${sx}</span></label>`).join("") + "</div>";
       },
@@ -1832,7 +1832,7 @@ if (!Object.entries) {
   function init() {
     try {
       cacheDOM(); loadState(); loadHistoryCache(); subscribe(onStateChange); initResultDelegation(); DrawerSystem.bindGlobalDelegation();
-      if (DOM.exampleBtn) DOM.exampleBtn.addEventListener("click", function() { DOM.numbers.value = "龍蛇馬 12 25 36 8 17 29 41 5 19 33 47"; runAnalysis(); saveInputCache(); });
+      if (DOM.exampleBtn) DOM.exampleBtn.addEventListener("click", function() { DOM.numbers.value = "龙蛇马 12 25 36 8 17 29 41 5 19 33 47"; runAnalysis(); saveInputCache(); });
       if (DOM.clearBtn) DOM.clearBtn.addEventListener("click", function() { DOM.numbers.value = ""; runAnalysis(); saveInputCache(); showToast("已清空输入"); });
       if (DOM.copyResultBtn) DOM.copyResultBtn.addEventListener("click", copyResult);
       if (DOM.numbers) DOM.numbers.addEventListener("input", function() { runAnalysis(); saveInputCache(); });
